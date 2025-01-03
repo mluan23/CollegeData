@@ -61,52 +61,9 @@ user_agents = [
 ]
 
 
-# def scrape_page(url):
-#     threads = []
-#     while True:
-#         proxy = random.choice(proxies)
-#         agent = ua.random
-#         options.add_argument(f'user-agent={agent}')
-#         options.add_argument(f'--proxy-server={proxy}')
-#         try:
-#             driver.get(url)
-#             time.sleep(random.uniform(1,5))
-#             soup = BeautifulSoup(driver.page_source, 'html.parser')
-#             college_elements = soup.findAll('div', class_='card search-result')  # get each college
-#             break
-#         except Exception as e:
-#             print(f"Request failed: {e}, trying a new proxy/user agent...")
-#             time.sleep(random.uniform(1, 5))
-#     driver.quit()
-#
-
 def scrape_page(url):
-    #threads = []
     colleges = []
 
-   # agent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.6 Safari/605.1.1'
-   #  agent = random.choice(user_agents)
-    # we want a random agent, and preferred US english
-    # headers = {"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-    #     "Accept-Encoding": "gzip, deflate, br, zstd",
-    #     "Accept-Language": "en-US,en;q=0.9",
-    #     "Host": "httpbin.org",
-    #     "Priority": "u=0, i",
-    #     "Referer": "https://www.scrapehero.com/",
-    #     "Sec-Ch-Ua": "\"Chromium\";v=\"130\", \"Microsoft Edge\";v=\"130\", \"Not?A_Brand\";v=\"99\"",
-    #     "Sec-Ch-Ua-Mobile": "?0",
-    #     "Sec-Ch-Ua-Platform": "\"Windows\"",
-    #     "Sec-Fetch-Dest": "document",
-    #     "Sec-Fetch-Mode": "navigate",
-    #     "Sec-Fetch-Site": "cross-site",
-    #     "Sec-Fetch-User": "?1",
-    #     "Upgrade-Insecure-Requests": "1",
-    #     "User-Agent": agent,
-    #     "X-Amzn-Trace-Id": "Root=1-674376af-1fde2d481b980b3a5ba04602"}
-    # headers = {
-    #     "User-Agent": agent,
-    #     "Accept-Language": "en-US,en;q=0.9",
-    # }
     colleges_written, initial_count = get_current_written(filename)
     headers, proxy = get_headers_and_proxy()
     initial_count += 1
@@ -124,24 +81,13 @@ def scrape_page(url):
     if response.from_cache:
         print("ok")
     soup = BeautifulSoup(response.content, 'html.parser')  # parse the HTML of the response
-    #print(bs.prettify())
-    #write_colleges = []
     college_elements = soup.findAll('div', class_='card search-result') # get each college
     for college in college_elements:
         college_url = college.find('a', class_='MuiTypography-root MuiTypography-inherit MuiLink-root MuiLink-underlineHover search-result__link nss-6ozsqs')['href']
         if college.find('h2').text in colleges_written:
             continue
         colleges.append(get_college_info(college_url, college, initial_count))
-        #colleges.append(a)
-        # write_to_file(a, filename)
         initial_count += 1
-        #thread = threading.Thread(target=get_college_info, args=(college_url, college))
-        #threads.append(thread)
-        #thread.start()
-    # for thread in threads:
-    #     thread.join()
-        #college_info = {'name': name, 'url': college_url}
-        #colleges.append(college_info)
     if len(colleges) > 0:
         write_to_file(colleges, filename)
     return colleges, soup # return colleges, and bs if want to reuse it
@@ -180,16 +126,11 @@ def get_college_info(url, college, count):  # get info about 1 college
         get_college_info(url, college, count)
         return None
     college_info['rank'] = count
-    #global count
-    #count += 1
     soup = BeautifulSoup(response.content, 'html.parser')
-    bucket = soup.find('div', class_='scalar__bucket')  # we are finding the cost with this
-    cost = bucket.find('div', class_='scalar__value').find('span').text  # the cost has no class so we need to dig through
-    #cost = re.sub(r'[^\d]', '', cost)  # regex to make just
-    college_info['cost'] = cost  # add to the info
-    # bucket = soup.findAll('div', class_='profile__buckets')
-    # buckets = bucket[10].find('div', class_='profile__bucket--1')
+    #cost = re.sub(r'[^\d]', '', cost)  # regex to make just the num
+    college_info['net cost'] = find_net_cost(soup)  # add to the info
     college_info["median earnings"] = find_earnings(soup)
+    college_info['location'] = find_location(soup)
     #add_to_colleges(college_info)
     if response.from_cache:
         print("from cache")
@@ -197,6 +138,15 @@ def get_college_info(url, college, count):  # get info about 1 college
     else:
         time.sleep(random.uniform(l_bound, u_bound))
     return college_info
+def find_net_cost(soup):
+    bucket = soup.find('div', class_='scalar__bucket')  # we are finding the cost with this
+    cost = bucket.find('div', class_='scalar__value').find('span').text  # the cost has no class so we need to dig through
+    return convert_to_num(cost)
+def find_location(soup):
+    return soup.findAll('li', class_='postcard__attr postcard-fact')[1].text
+def convert_to_num(original):
+    num = re.sub(r'[^\d]', '', original)
+    return int(num)
 
 def get_current_written(filename):
     try:
@@ -219,13 +169,13 @@ def find_earnings(soup):
                 earnings = bucket.find('div', class_='scalar__value').find('span').text
         except AttributeError:
             pass
-    return earnings
+    return convert_to_num(earnings)
 # def add_to_colleges(college_info):
 #     with lock:
 #         colleges.append(college_info)
 def write_to_file(some_colleges, namefile):
     with open(namefile, 'a', newline='') as file:
-        fieldnames = ['name', 'url', 'rank', 'cost', 'median earnings']
+        fieldnames = ['rank', 'name', 'url', 'net cost', 'median earnings', 'location']
         writer = csv.DictWriter(file, fieldnames=fieldnames)
         #writer = csv.writer(file)
         a, b = get_current_written(namefile)
