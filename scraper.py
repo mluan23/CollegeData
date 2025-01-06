@@ -19,7 +19,7 @@ import re
 # so we might consider using rate limits in the future; for now let's not
 l_bound = 10
 u_bound = 12
-requests_cache.install_cache('niche_data_colleges', expire_after=3600) # caching responses so less requests to server
+requests_cache.install_cache('niche_data_colleges', expire_after=10800 * 8 * 7) # caching responses so less requests to server
 ua = UserAgent()
 proxies = []
 cache_time = 10800 * 8 * 7 # Cache duration in seconds (1 week)
@@ -68,12 +68,10 @@ def scrape_page(url):
     colleges_written, initial_count = get_current_written(filename)
     initial_count += 1
     response = make_request(url)
+    if response is None:
+        return []
     if response.status_code != 200:  # 403 is forbidden, try a new proxy / header
-        if response.status_code == 404 or len(user_agents) == 0:
-            print("Retry again later")
-            return None
         scrape_page(url)
-        return None
     soup = BeautifulSoup(response.content, 'html.parser')  # parse the HTML of the response
     college_elements = soup.findAll('div', class_='card search-result') # get each college
     for college in college_elements:
@@ -116,6 +114,9 @@ def make_request(url):
         print(str(response.status_code) + " error for " + url + " , agent:" + headers["User-Agent"])
         user_agents.remove(headers["User-Agent"])
         time.sleep(random.uniform(l_bound, u_bound))
+    if response.status_code == 404 or len(user_agents) < 1:
+        print("retry again later")
+        return None
     end = time.time()
     elapsed = end-start_time
     print(elapsed)
@@ -123,9 +124,10 @@ def make_request(url):
 def get_college_info(url, college, count):  # get info about 1 college
     college_info = {'name': college.find('h2').text, 'url': url}
     response = make_request(url)
+    if response is None:
+        return []
     if response.status_code != 200:
-        get_college_info(url, college, count)
-        return None
+        return get_college_info(url, college, count)
     print("getting info for " + college.find('h2').text)
     college_info['rank'] = count
     soup = BeautifulSoup(response.content, 'html.parser')
@@ -188,17 +190,22 @@ def find_majors(soup):
     if majors_url == '':
         return []
     response = make_request(majors_url)
+    if response is None:
+        return []
     if response.status_code != 200:
-        find_majors(soup)
-        return None
+        return find_majors(soup)
     if not response.from_cache:
         time.sleep(random.uniform(l_bound, u_bound))
     soup = BeautifulSoup(response.content, 'html.parser')
-    majors = soup.find_all('li', class_='majors-list-item')
-    list_majors = []
-    for major in majors:
-        list_majors.append(major.find('div', class_='majors-list-item-major').text)
-    return list_majors
+    list_majors = soup.find_all('li', class_='majors-list-item')
+    # list_majors = []
+    # list_graduates = []
+    majors = {}
+    for major in list_majors:
+        m = major.find('div', class_='majors-list-item-major').text
+        grads = major.find('span', class_='majors-list-item--bold').text
+        majors[m] = grads
+    return majors
 
 def find_acceptance_rate(soup):
     labels = soup.find_all('div', class_='MuiGrid-root MuiGrid-item MuiGrid-grid-xs-12 MuiGrid-grid-sm-6 nss-1x0x05w')
@@ -361,11 +368,11 @@ def get_rand_proxy():
 def main():
 
     base_url = "https://www.niche.com/colleges/search/best-colleges/"
-    #base_url = "https://www.niche.com/colleges/search/best-colleges/?page=5"
+    #base_url = "https://www.niche.com/colleges/search/best-colleges/?page=2"
 
     #delete_row_by_number(filename, 2)
-    c = scrape_some_pages(base_url, 1)
-    #c = scrape_all_pages(base_url)
+    #c = scrape_some_pages(base_url, 2)
+    c = scrape_all_pages(base_url)
     for i in c:
         print(i)
 
