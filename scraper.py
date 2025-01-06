@@ -16,16 +16,15 @@ import re
 #from selenium.webdriver.common.by import By
 #from selenium.webdriver.chrome.options import Options
 
-# so we might consider using rate limits in the future; for now let's not
-l_bound = 10
-u_bound = 12
+l_bound = 7.5
+u_bound = 10
 requests_cache.install_cache('niche_data_colleges', expire_after=10800 * 8 * 7) # caching responses so less requests to server
 ua = UserAgent()
 proxies = []
 cache_time = 10800 * 8 * 7 # Cache duration in seconds (1 week)
 #lock = threading.Lock()
 #colleges = []
-filename = "colleges.csv"
+filename = "college_data.csv"
 start_time = time.time()
 #count = 1 # count the num colleges
 # options = Options()
@@ -99,7 +98,7 @@ def scrape_all_pages(url):
     while url:
         collegess, soup = scrape_page(url)
         all_colleges.extend(collegess)
-        time.sleep(random.uniform(l_bound, u_bound))
+        #time.sleep(random.uniform(l_bound, u_bound))
         next_page = soup.find('a', {'aria-label': 'Go to next page'})
         if next_page:
             url = next_page['href']
@@ -110,10 +109,11 @@ def scrape_all_pages(url):
 def make_request(url):
     headers, proxy = get_headers_and_proxy()
     response = requests.get(url, headers=headers, proxies=proxy)
+    if not response.from_cache:
+        time.sleep(random.uniform(l_bound, u_bound))
     if response.status_code != 200:
         print(str(response.status_code) + " error for " + url + " , agent:" + headers["User-Agent"])
         user_agents.remove(headers["User-Agent"])
-        time.sleep(random.uniform(l_bound, u_bound))
     if response.status_code == 404 or len(user_agents) < 1:
         print("retry again later")
         return None
@@ -132,6 +132,8 @@ def get_college_info(url, college, count):  # get info about 1 college
     college_info['rank'] = count
     soup = BeautifulSoup(response.content, 'html.parser')
     college_info['net cost'] = find_net_cost(soup)  # add to the info
+    college_info['aid'] = find_average_aid(soup)
+    college_info['in-state tuition'], college_info['out-state tuition'], college_info['housing'], college_info['meals'], college_info['books'], college_info['prices-by-income'] = find_cost_breakdown(soup)
     college_info["median earnings"] = find_earnings(soup)
     college_info['location'] = find_location(soup)
     college_info['student-faculty ratio'] = find_student_faculty_ratio(soup)
@@ -142,14 +144,78 @@ def get_college_info(url, college, count):  # get info about 1 college
         = find_graduation_rate_and_employment(soup)
     #college_info['employed 2 years post graduation'] = find_employment_rate_post_two_years(soup)
     college_info['full-time undergraduates'] = find_enrolled(soup)
+    college_info['public/private'] = soup.find('a', class_='MuiButton-root MuiButton-contained MuiButton-containedGray MuiButton-sizeSmall MuiButton-containedSizeSmall MuiButton-disableElevation MuiButtonBase-root search-tags__wrap__list__tag__a nss-t20d0m').text
     #add_to_colleges(college_info)
-    if not response.from_cache:
-        time.sleep(random.uniform(l_bound, u_bound))
+    # if not response.from_cache:
+    #     time.sleep(random.uniform(l_bound, u_bound))
     return college_info
 def find_net_cost(soup):
     bucket = soup.find('div', class_='scalar__bucket')  # we are finding the cost with this
     cost = bucket.find('div', class_='scalar__value').find('span').text  # the cost has no class so we need to dig through
     return convert_to_num(cost)
+def find_average_aid(soup):
+    buckets = soup.find_all('div', class_='block--cost__bucket')
+    for bucket in buckets:
+        try:
+            if 'Average Total Aid Awarded' in bucket.find('div', class_='scalar__label').find('span').text:
+                return convert_to_num(bucket.find('div', class_='scalar__value').find('span').text)
+        except AttributeError:
+            pass
+    return -1
+def find_cost_breakdown(soup):
+    links = soup.find_all('a', class_='expansion-link__text')
+    url = ''
+    try:
+        for link in links:
+            if 'Explore Tuition & Cost Breakdown' in link.find('span').text:
+                url = link['href']
+                break
+    except AttributeError:
+        pass
+    if url == '':
+        return -1,-1,-1,-1,-1,{}
+    response = make_request(url)
+    if response is None:
+        return -1,-1,-1,-1,-1,{}
+    if response.status_code != 200:
+        return find_cost_breakdown(soup)
+    soup = BeautifulSoup(response.content, 'html.parser')
+    buckets = soup.find_all('div', class_='blank__bucket')
+    in_tution = -1
+    out_tution = -1
+    housing = -1
+    meal = -1
+    books = -1
+    for bucket in buckets:
+        try:
+            label = bucket.find('div', class_='scalar__label').find('span').text
+            value = convert_to_num(bucket.find('div', class_='scalar__value').find('span').text)
+            if 'In-State Tuition' in label:
+                in_tution = value
+            elif 'Out-of-State Tuition' in label:
+                out_tution = value
+            elif 'Average Housing Cost' in label:
+                housing = value
+            elif 'Average Meal Plan Cost' in label:
+                meal = value
+            elif 'Books & Supplies' in label:
+                books = value
+        except AttributeError or ValueError:
+            pass
+    prices_by_income = {}
+    tables = soup.find_all('div', class_='profile__table')
+    for table in tables:
+        try:
+            header = table.find('div', class_='profile__table__title').text
+            if 'Net Price by Household Income' in header:
+                labels = table.find_all('div', class_='fact__table__row__label').text
+                values = table.find_all('div', class_='fact__table__row__value').text
+                for x in range(len(labels)):
+                    prices_by_income[labels[x]] = convert_to_num(values[x])
+        except AttributeError:
+            pass
+    return in_tution, out_tution, housing, meal, books, prices_by_income
+
 def find_location(soup):
     return soup.findAll('li', class_='postcard__attr postcard-fact')[1].text
 
@@ -194,8 +260,8 @@ def find_majors(soup):
         return []
     if response.status_code != 200:
         return find_majors(soup)
-    if not response.from_cache:
-        time.sleep(random.uniform(l_bound, u_bound))
+    # if not response.from_cache:
+    #     time.sleep(random.uniform(l_bound, u_bound))
     soup = BeautifulSoup(response.content, 'html.parser')
     list_majors = soup.find_all('li', class_='majors-list-item')
     # list_majors = []
@@ -215,7 +281,7 @@ def find_acceptance_rate(soup):
                 return int(convert_to_num(label.find('div', class_='scalar__value').text))
         except AttributeError:
             pass
-    return 0
+    return -1
 
 def find_application_deadline(soup):
     d = soup.find('div', class_='MuiGrid-root MuiGrid-item MuiGrid-grid-xs-12 MuiGrid-grid-sm-6 block--admissions__application-deadline nss-1x0x05w')
@@ -229,12 +295,12 @@ def find_enrolled(soup):
                 return convert_to_num(bucket.find('div', class_='scalar__value').find('span').text)
         except AttributeError:
             pass
-    return 0
+    return -1
 def find_graduation_rate_and_employment(soup):
    # buckets = soup.find_all('div', class_='profile__bucket--2')
     three = soup.find_all('div', class_='scalar--three')
-    g_rate = 0
-    e_rate = 0
+    g_rate = -1
+    e_rate = -1
     for t in three:
         try:
             labels = t.find_all('div', class_='scalar__label')
@@ -257,10 +323,13 @@ def find_employment_rate_post_two_years(soup):
             pass
         except IndexError:
             pass
-    return 0
+    return -1
 def convert_to_num(original):
     num = re.sub(r'[^\d]', '', original)
-    return int(num)
+    try:
+        return int(num)
+    except ValueError:
+        return -1
 
 # def add_to_colleges(college_info):
 #     with lock:
@@ -371,8 +440,8 @@ def main():
     #base_url = "https://www.niche.com/colleges/search/best-colleges/?page=2"
 
     #delete_row_by_number(filename, 2)
-    #c = scrape_some_pages(base_url, 2)
-    c = scrape_all_pages(base_url)
+    c = scrape_some_pages(base_url, 1)
+    #c = scrape_all_pages(base_url)
     for i in c:
         print(i)
 
