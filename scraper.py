@@ -144,7 +144,7 @@ def get_college_info(url, college, count):  # get info about 1 college
         = find_graduation_rate_and_employment(soup)
     #college_info['employed 2 years post graduation'] = find_employment_rate_post_two_years(soup)
     college_info['full-time undergraduates'] = find_enrolled(soup)
-    college_info['public/private'] = soup.find('a', class_='MuiButton-root MuiButton-contained MuiButton-containedGray MuiButton-sizeSmall MuiButton-containedSizeSmall MuiButton-disableElevation MuiButtonBase-root search-tags__wrap__list__tag__a nss-t20d0m').text
+    college_info['public/private'] = find_public_private(soup)
     #add_to_colleges(college_info)
     # if not response.from_cache:
     #     time.sleep(random.uniform(l_bound, u_bound))
@@ -183,9 +183,6 @@ def find_cost_breakdown(soup):
     buckets = soup.find_all('div', class_='blank__bucket')
     in_tution = -1
     out_tution = -1
-    housing = -1
-    meal = -1
-    books = -1
     for bucket in buckets:
         try:
             label = bucket.find('div', class_='scalar__label').find('span').text
@@ -194,25 +191,41 @@ def find_cost_breakdown(soup):
                 in_tution = value
             elif 'Out-of-State Tuition' in label:
                 out_tution = value
-            elif 'Average Housing Cost' in label:
-                housing = value
-            elif 'Average Meal Plan Cost' in label:
-                meal = value
-            elif 'Books & Supplies' in label:
-                books = value
         except AttributeError or ValueError:
+            pass
+    housing = -1
+    meal = -1
+    books = -1
+    for bucket in buckets:
+        try:
+            three = bucket.find_all('div', class_='scalar--three')
+            #values = bucket.find_all('div', class_='scalar__value')
+            for profile in three:
+                try:
+                    label = profile.find('div', class_='scalar__label').find('span').text
+                    value = convert_to_num(profile.find('div', class_='scalar__value').find('span').text)
+                    if 'Average Housing Cost' in label:
+                        housing = value
+                    elif 'Average Meal Plan Cost' in label:
+                        meal = value
+                    elif 'Books & Supplies' in label:
+                        books = value
+                except AttributeError or ValueError:
+                    pass
+        except AttributeError:
             pass
     prices_by_income = {}
     tables = soup.find_all('div', class_='profile__table')
     for table in tables:
         try:
-            header = table.find('div', class_='profile__table__title').text
-            if 'Net Price by Household Income' in header:
-                labels = table.find_all('div', class_='fact__table__row__label').text
-                values = table.find_all('div', class_='fact__table__row__value').text
-                for x in range(len(labels)):
-                    prices_by_income[labels[x]] = convert_to_num(values[x])
-        except AttributeError:
+            title = table.find('div', class_='profile__table__title').text
+            if 'Net Price by Household Income' in title:
+                rows = table.find_all('li', class_='fact__table__row')
+                for row in rows:
+                    label = row.find('div', class_='fact__table__row__label').text
+                    value = convert_to_num(row.find('div', class_='fact__table__row__value').text)
+                    prices_by_income[label] = value
+        except AttributeError or ValueError:
             pass
     return in_tution, out_tution, housing, meal, books, prices_by_income
 
@@ -324,6 +337,17 @@ def find_employment_rate_post_two_years(soup):
         except IndexError:
             pass
     return -1
+
+def find_public_private(soup):
+    tags = soup.find_all('li', class_='search-tags__wrap__list__tag')
+    for tag in tags:
+        try:
+            label = tag.find('a').text
+            if 'Public' in label or 'Private' in label:
+                return label
+        except AttributeError:
+            pass
+    return ''
 def convert_to_num(original):
     num = re.sub(r'[^\d]', '', original)
     try:
