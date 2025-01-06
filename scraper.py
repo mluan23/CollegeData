@@ -226,8 +226,12 @@ def find_cost_breakdown(soup):
     return in_tution, out_tution, housing, meal, books, prices_by_income
 
 def find_location(soup):
-    return soup.findAll('li', class_='postcard__attr postcard-fact')[1].text
-
+    try:
+        return soup.findAll('li', class_='postcard__attr postcard-fact')[1].text
+    except IndexError:
+        return 'Online'
+    except AttributeError:
+        return 'Unlisted'
 # used to just be 10th profile bucket on all, not sure why not now
 def find_earnings(soup):
     buckets = soup.find_all('div', class_='profile__bucket--1')
@@ -460,8 +464,8 @@ def main():
     #base_url = "https://www.niche.com/colleges/search/best-colleges/?page=2"
 
     #delete_row_by_number(filename, 2)
-    c = scrape_some_pages(base_url, 2)
-    #c = scrape_all_pages(base_url)
+    #c = scrape_some_pages(base_url, 2)
+    c = scrape_all_pages(base_url)
     for i in c:
         print(i)
 
