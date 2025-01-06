@@ -142,12 +142,8 @@ def get_college_info(url, college, count):  # get info about 1 college
     college_info['application deadline'] = find_application_deadline(soup)
     college_info['graduation rate'], college_info['employed 2 years post graduation'] \
         = find_graduation_rate_and_employment(soup)
-    #college_info['employed 2 years post graduation'] = find_employment_rate_post_two_years(soup)
     college_info['full-time undergraduates'] = find_enrolled(soup)
     college_info['public/private'] = find_public_private(soup)
-    #add_to_colleges(college_info)
-    # if not response.from_cache:
-    #     time.sleep(random.uniform(l_bound, u_bound))
     return college_info
 def find_net_cost(soup):
     bucket = soup.find('div', class_='scalar__bucket')  # we are finding the cost with this
@@ -464,7 +460,7 @@ def main():
     #base_url = "https://www.niche.com/colleges/search/best-colleges/?page=2"
 
     #delete_row_by_number(filename, 2)
-    c = scrape_some_pages(base_url, 1)
+    c = scrape_some_pages(base_url, 2)
     #c = scrape_all_pages(base_url)
     for i in c:
         print(i)
