@@ -24,7 +24,7 @@ proxies = []
 cache_time = 10800 * 8 * 7 # Cache duration in seconds (1 week)
 #lock = threading.Lock()
 #colleges = []
-filename = "colleges.csv"
+filename = "college.csv"
 start_time = time.time()
 #count = 1 # count the num colleges
 # options = Options()
@@ -143,7 +143,7 @@ def get_college_info(url, college, count):  # get info about 1 college
     college_info['application deadline'] = find_application_deadline(soup)
     college_info['graduation rate'], college_info['employed 2 years post graduation'] \
         = find_graduation_rate_and_employment(soup)
-    college_info['full-time undergraduates'] = find_enrolled(soup)
+    college_info['full-time undergraduates'], college_info['part-time undergrads'], college_info['undergrads over 25'], college_info['pell-grant recipients'], college_info['varsity athletes'] = find_enrolled_information(soup)
     college_info['public/private'] = find_public_private(soup)
     return college_info
 def find_net_cost(soup):
@@ -317,16 +317,36 @@ def find_application_deadline(soup):
     except AttributeError:
         print("NO APPLICATION DEADLINE LISTED")
         return '-'
-def find_enrolled(soup):
+def find_enrolled_information(soup):
     buckets = soup.find_all('div', class_='profile__bucket--1')
+    fulltime = -1
+    parttime = -1
+    over25 = -1  # % based
+    pell = -1    # % based
+    athletes = -1 # % based
     for bucket in buckets:
         try:
             label = bucket.find('div', class_='scalar__label').find('span').text
             if 'Full-Time Enrollment' in label:
-                return convert_to_num(bucket.find('div', class_='scalar__value').find('span').text)
+                fulltime = convert_to_num(bucket.find('div', class_='scalar__value').find('span').text)
+                threes = bucket.find_all('div', class_='scalar--three')
+                for l in threes:
+                    try:
+                        lbl = l.find('div', class_='scalar__label').find('span').text
+                        val = l.find('div', class_='scalar__value').find('span').text
+                        if 'Part-Time Undergrads' in lbl:
+                            parttime = val
+                        elif 'Undergrads Over 25' in lbl:
+                            over25 = convert_to_num(val)
+                        elif 'Pell Grant' in lbl:
+                            pell = convert_to_num(val)
+                        elif 'Varsity Athletes' in lbl:
+                            athletes = convert_to_num(val)
+                    except AttributeError:
+                        pass
         except AttributeError:
             pass
-    return -1
+    return fulltime, parttime, over25, pell, athletes
 def find_graduation_rate_and_employment(soup):
    # buckets = soup.find_all('div', class_='profile__bucket--2')
     three = soup.find_all('div', class_='scalar--three')
