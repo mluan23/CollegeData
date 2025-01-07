@@ -17,14 +17,14 @@ import re
 #from selenium.webdriver.chrome.options import Options
 
 l_bound = 7.5
-u_bound = 10
+u_bound = 9.6
 requests_cache.install_cache('niche_data_colleges', expire_after=10800 * 8 * 7) # caching responses so less requests to server
 ua = UserAgent()
 proxies = []
 cache_time = 10800 * 8 * 7 # Cache duration in seconds (1 week)
 #lock = threading.Lock()
 #colleges = []
-filename = "college_data.csv"
+filename = "colleges.csv"
 start_time = time.time()
 #count = 1 # count the num colleges
 # options = Options()
@@ -136,6 +136,7 @@ def get_college_info(url, college, count):  # get info about 1 college
     college_info['in-state tuition'], college_info['out-state tuition'], college_info['housing'], college_info['meals'], college_info['books'], college_info['prices-by-income'] = find_cost_breakdown(soup)
     college_info["median earnings"] = find_earnings(soup)
     college_info['location'] = find_location(soup)
+    college_info['address'] = find_address(soup)
     college_info['student-faculty ratio'] = find_student_faculty_ratio(soup)
     college_info['majors'] = find_majors(soup)
     college_info['acceptance rate'] = find_acceptance_rate(soup)
@@ -147,7 +148,10 @@ def get_college_info(url, college, count):  # get info about 1 college
     return college_info
 def find_net_cost(soup):
     bucket = soup.find('div', class_='scalar__bucket')  # we are finding the cost with this
-    cost = bucket.find('div', class_='scalar__value').find('span').text  # the cost has no class so we need to dig through
+    try:
+        cost = bucket.find('div', class_='scalar__value').find('span').text
+    except AttributeError:
+        return -1
     return convert_to_num(cost)
 def find_average_aid(soup):
     buckets = soup.find_all('div', class_='block--cost__bucket')
@@ -229,7 +233,17 @@ def find_location(soup):
     try:
         return soup.findAll('li', class_='postcard__attr postcard-fact')[1].text
     except IndexError:
+        print('ONLINE LOCATION')
         return 'Online'
+    except AttributeError:
+        return 'Unlisted'
+
+def find_address(soup):
+    try:
+        address = soup.find('address', class_='profile__address--compact')
+        for br in address.find_all('br'):
+            br.replace_with(' ')
+        return address.get_text()
     except AttributeError:
         return 'Unlisted'
 # used to just be 10th profile bucket on all, not sure why not now
@@ -297,8 +311,12 @@ def find_acceptance_rate(soup):
     return -1
 
 def find_application_deadline(soup):
-    d = soup.find('div', class_='MuiGrid-root MuiGrid-item MuiGrid-grid-xs-12 MuiGrid-grid-sm-6 block--admissions__application-deadline nss-1x0x05w')
-    return d.find('div', class_='scalar__value').find('span').text
+    try:
+        d = soup.find('div', class_='MuiGrid-root MuiGrid-item MuiGrid-grid-xs-12 MuiGrid-grid-sm-6 block--admissions__application-deadline nss-1x0x05w')
+        return d.find('div', class_='scalar__value').find('span').text
+    except AttributeError:
+        print("NO APPLICATION DEADLINE LISTED")
+        return '-'
 def find_enrolled(soup):
     buckets = soup.find_all('div', class_='profile__bucket--1')
     for bucket in buckets:
@@ -355,10 +373,6 @@ def convert_to_num(original):
     except ValueError:
         return -1
 
-# def add_to_colleges(college_info):
-#     with lock:
-#         colleges.append(college_info)
-
 
 def get_current_written(filename):
     try:
@@ -371,8 +385,6 @@ def get_current_written(filename):
 def write_to_file(some_colleges, namefile):
     with open(namefile, 'a', newline='') as file:
         fieldnames = some_colleges[0].keys()
-        # fieldnames = ['rank', 'name', 'url', 'net cost', 'median earnings', 'location', 'student-faculty ratio',
-        #               'majors', 'acceptance rate', 'application deadline']
         writer = csv.DictWriter(file, fieldnames=fieldnames)
         #writer = csv.writer(file)
         a, b = get_current_written(namefile)
@@ -406,17 +418,6 @@ def delete_row_by_number(name, row_number):
 def get_headers_and_proxy():
     agent = random.choice(user_agents)
     proxy = get_rand_proxy()
-    # headers = {"Accept-Language": "en-US,en;q=0.9",
-    #            "accept-encoding": "gzip, deflate, br, zstd",
-    #            "priority": "u=0, i",
-    #            "referer": "https://niche.com/",
-    #            "sec-ch-ua-mobile": "?0",
-    #            "sec-ch-ua-platform": "Windows",
-    #            "sec-fetch-dest": "document",
-    #            "sec-fetch-mode": "navigate",
-    #            "sec-fetch-site": "same-origin",
-    #            "sec-fetch-user": "?1",
-    #            "User-Agent": agent}
     headers = {"User-Agent": agent,
                "Accept-Language": "en-US,en;q=0.9"}
     return headers, proxy
