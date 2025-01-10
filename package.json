@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "leaflet-boundary-canvas": "^1.0.0"
+  }
+}

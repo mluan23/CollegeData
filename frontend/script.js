@@ -1,13 +1,13 @@
-
+//import '../node_modules/leaflet-boundary-canvas'
 
 
 async function getCSV(){
     try {
-        const response = await fetch('../data/college.csv');
+        var response = await fetch('../data/college.csv');
         if (!response.ok) {
             throw new Error('Network response was not ok');
         }
-        const data = await response.text(); // entire CSV as a single string
+        var data = await response.text(); // entire CSV as a single string
         displayData(data);
     } catch (error) {
         console.error('Failed to fetch CSV file:', error);
@@ -16,12 +16,37 @@ async function getCSV(){
 
 function initMap(){
 // Initialize the map centered on a specific location
-const map = L.map('map').setView([39.8283, -98.5795], 10); // approx US center
+var map = L.map('map', {
+    center: [39.8283, -98.5795], // US center
+    zoom: 4,
+    zoomSnap: 0 // don't snap zoom value
+})
+// hide everything that is not the US
+$.getJSON('https://cdn.rawgit.com/johan/world.geo.json/34c96bba/countries/USA.geo.json').then(function(geoJSON) {
+  var osm = new L.TileLayer.BoundaryCanvas("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    boundary: geoJSON,
+    attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors, US shape <a href="https://github.com/johan/world.geo.json">johan/world.geo.json</a>'
+  });
+  map.addLayer(osm);
+  var usLayer = L.geoJSON(geoJSON);
+  map.fitBounds(usLayer.getBounds());
+});
 
 // Add a tile layer to the map
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-}).addTo(map);
+// L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+//     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+// }).addTo(map);
+
+// var locations = [
+//     [40.7128, -74.0060], // NY
+//     [34.0522, -118.2437] // LA
+// ]
+// locations.forEach(location => {
+//     L.marker(location).addTo(map)
+// })
+
+// var bounds = new L.latLngBounds(locations)
+// map.fitBounds(bounds)
 
 // Add a marker at the location
 // const marker = L.marker([40.7128, -74.0060]).addTo(map)
@@ -30,30 +55,32 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 }
 
 
+function hideOtherCountries(){
 
+}
 
 function displayData(data){
-    const lines = data.split('\n')
-    const tableHeader = document.getElementById('tableHeader')
-    const tableBody = document.getElementById('tableBody')
+    var lines = data.split('\n')
+    var tableHeader = document.getElementById('tableHeader')
+    var tableBody = document.getElementById('tableBody')
     tableHeader.innerHTML = ''
     tableBody.innerHTML = ''
-    const headers = lines[0].split(',')
-    const addrIndex = headers.indexOf('address')
-    const rows = lines.slice(1)
+    var headers = lines[0].split(',')
+    var addrIndex = headers.indexOf('address')
+    var rows = lines.slice(1)
     headers.forEach(header => {
         
-        const th = document.createElement('th')
+        var th = document.createElement('th')
         th.innerHTML = header
         console.log("adding header: ", header)
         tableHeader.appendChild(th)
         
     });
     rows.forEach(row => {
-        const tr = document.createElement('tr')
-        const cols = row.split(',')
+        var tr = document.createElement('tr')
+        var cols = row.split(',')
         cols.forEach(col => {
-            const td = document.createElement('td')
+            var td = document.createElement('td')
             td.innerHTML = col
             tr.appendChild(td)
         })
