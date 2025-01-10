@@ -16,15 +16,15 @@ import re
 #from selenium.webdriver.common.by import By
 #from selenium.webdriver.chrome.options import Options
 
-l_bound = 7.5
-u_bound = 9.6
-requests_cache.install_cache('niche_data_colleges', expire_after=10800 * 8 * 7) # caching responses so less requests to server
+l_bound = 10
+u_bound = 12
+requests_cache.install_cache('niche_data_colleges', expire_after=3600) # caching responses so less requests to server
 ua = UserAgent()
 proxies = []
-cache_time = 10800 * 8 * 7 # Cache duration in seconds (1 week)
+cache_time = 3600 # Cache duration in seconds (1 week)
 #lock = threading.Lock()
 #colleges = []
-filename = "college.csv"
+filename = "/data/college.csv"
 start_time = time.time()
 #count = 1 # count the num colleges
 # options = Options()
@@ -445,7 +445,7 @@ def get_rand_proxy():
     # Retrieve latest proxies
     current_time = time.time()
     # check if there is a proxy
-    if proxies and (current_time - proxies[0]['timestamp']) < cache_time:
+    if proxies and (current_time - proxies[0]['timestamp']) < 10:
         return random.choice(proxies)
     headers = {'User-Agent': ua.random}
     response = requests.get('https://www.sslproxies.org/', headers=headers)
@@ -480,6 +480,7 @@ def get_rand_proxy():
 #def random_proxy():
  # return random.randint(0, len(proxies) - 1)
 def main():
+    #requests_cache.clear()
 
     base_url = "https://www.niche.com/colleges/search/best-colleges/"
     #base_url = "https://www.niche.com/colleges/search/best-colleges/?page=2"
