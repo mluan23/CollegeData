@@ -55,8 +55,8 @@ $.getJSON('https://cdn.rawgit.com/johan/world.geo.json/34c96bba/countries/USA.ge
 }
 
 
-function hideOtherCountries(){
-
+function addAddressToMap(address){
+    
 }
 
 function displayData(data){
@@ -77,9 +77,14 @@ function displayData(data){
         
     });
     rows.forEach(row => {
+        var addrCount = 0
         var tr = document.createElement('tr')
         var cols = row.split(',')
         cols.forEach(col => {
+            if(addrCount == addrIndex){
+                
+            }
+            addrCount += 1
             var td = document.createElement('td')
             td.innerHTML = col
             tr.appendChild(td)
