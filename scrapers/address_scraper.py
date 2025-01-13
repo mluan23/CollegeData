@@ -2,6 +2,7 @@ import random
 import time
 
 from selenium import webdriver
+from selenium.common import TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
@@ -11,24 +12,35 @@ from selenium.webdriver.support.wait import WebDriverWait
 
 filename = '../data/college.csv'
 
-def write_coordinates(file, col_name, col_based_on, driver):
+def write_coordinates(file, col_name, col_based_on, col_based_on_2, driver):
+    retries = 0
     df = pd.read_csv(file, encoding='utf-8')
+    was_written = False
     if col_name not in df.columns:
         df[col_name] = None
     df[col_name] = df[col_name].astype(object) # have to cast to object to allow dataframe to store an array
     for index, row in df.iterrows():
+        was_written = False
         if pd.isna(row[col_name]):
-            address = row[col_based_on]
+            by_address = row[col_based_on]
+            by_name = row[col_based_on_2]
+
+            # just gonna assume that either the address or college name will yield a coordinate
             try:
-                coords = get_coordinates(address, driver)
+                coords = get_coordinates(by_address, driver)
                 print(coords)
                 df.at[index, col_name] = coords
                 df.to_csv(file, index=False)
                # df['coords'] = df['coords'].apply(lambda x: ['X', 'Y'])
-                time.sleep(random.uniform(4,6))
-                #print(coords)
-            except AttributeError as e:
-                pass
+                time.sleep(random.uniform(7,10))
+            except TimeoutException:
+                retries += 1
+                coords = get_coordinates(by_name, driver)
+                print(coords)
+                df.at[index, col_name] = coords
+                df.to_csv(file, index=False)
+                time.sleep(random.uniform(7, 10))
+
 
 
 #def scrape():
@@ -51,7 +63,7 @@ def get_coordinates(address, driver):
     coords = [0, 0]
 
     #latitude_element = WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.ID, 'latitude')))
-    wait = WebDriverWait(driver, 10)
+    wait = WebDriverWait(driver, 30)
 
     # lat/long fields have a . in them so just use that after clearing
     wait.until(EC.text_to_be_present_in_element_value((By.ID, 'latitude'), '.'))
@@ -70,7 +82,7 @@ def main():
     driver = webdriver.Chrome()
     driver.get('https://gps-coordinates.org/coordinate-converter.php')
     try:
-        write_coordinates(filename, 'coordinates', 'address', driver)
+        write_coordinates(filename, 'coordinates', 'address', 'name', driver)
         #print(get_coordinates('133 WALL ST NEW HAVEN, CT 06511', driver))
     finally:
         #print('a')
