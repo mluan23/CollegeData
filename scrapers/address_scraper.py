@@ -13,6 +13,7 @@ from selenium.webdriver.support.wait import WebDriverWait
 filename = '../data/college.csv'
 
 def write_coordinates(file, col_name, col_based_on, col_based_on_2, driver):
+    print("IGOTHANDS")
     retries = 0
     df = pd.read_csv(file, encoding='utf-8')
     was_written = False
@@ -40,6 +41,7 @@ def write_coordinates(file, col_name, col_based_on, col_based_on_2, driver):
                 df.at[index, col_name] = coords
                 df.to_csv(file, index=False)
                 time.sleep(random.uniform(7, 10))
+    print('Done writing!')
 
 
 

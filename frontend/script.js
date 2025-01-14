@@ -55,6 +55,10 @@ $.getJSON('https://cdn.rawgit.com/johan/world.geo.json/34c96bba/countries/USA.ge
 }
 
 
+function plotOnMap(){
+    
+}
+
 function addAddressToMap(address){
     
 }
