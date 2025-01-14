@@ -16,15 +16,15 @@ import re
 #from selenium.webdriver.common.by import By
 #from selenium.webdriver.chrome.options import Options
 
-l_bound = 10
-u_bound = 12
-requests_cache.install_cache('niche_data_colleges', expire_after=3600) # caching responses so less requests to server
+l_bound = 7
+u_bound = 10
+requests_cache.install_cache('niche_data_colleges', expire_after=3600 * 24 * 2) # caching responses so less requests to server
 ua = UserAgent()
 proxies = []
-cache_time = 3600 # Cache duration in seconds (1 week)
+cache_time = 3600 # Cache duration in seconds (1 hour)
 #lock = threading.Lock()
 #colleges = []
-filename = "../data/college2.csv"
+filename = "../data/college.csv"
 start_time = time.time()
 #count = 1 # count the num colleges
 # options = Options()
@@ -396,7 +396,7 @@ def convert_to_num(original):
 
 def get_current_written(filename):
     try:
-        with open(filename, 'r', newline='') as file:
+        with open(filename, 'r', newline='', encoding='utf-8') as file:
             reader = csv.DictReader(file)
             names = [row['name'] for row in reader]
             return names[0:], len(names)
@@ -419,7 +419,7 @@ def write_to_file(some_colleges, namefile):
 
 
 def delete_row_by_number(name, row_number):
-    with open(name, mode='r') as file:
+    with open(name, mode='r', encoding='Latin1') as file:
         # Read the data into a list
         reader = csv.reader(file)
         rows = list(reader)
@@ -429,9 +429,9 @@ def delete_row_by_number(name, row_number):
         raise ValueError("Row number out of range")
 
     # Delete the row by index
-    del rows[row_number]
+    del rows[len(rows)-1]
 
-    with open(name, mode='w', newline='') as file:
+    with open(name, mode='w', newline='', encoding='Latin1') as file:
         # Write the updated data back to the CSV file
         writer = csv.writer(file)
         writer.writerows(rows)
@@ -481,15 +481,15 @@ def get_rand_proxy():
  # return random.randint(0, len(proxies) - 1)
 def main():
     #requests_cache.clear()
-
+    delete_row_by_number(filename, 0)
     base_url = "https://www.niche.com/colleges/search/best-colleges/"
     #base_url = "https://www.niche.com/colleges/search/best-colleges/?page=2"
 
     #delete_row_by_number(filename, 2)
     #c = scrape_some_pages(base_url, 2)
-    c = scrape_all_pages(base_url)
-    for i in c:
-        print(i)
+    #c = scrape_all_pages(base_url)
+    #for i in c:
+       # print(i)
 
 
 
