@@ -15,10 +15,10 @@ import re
 #from selenium.webdriver.chrome.service import Service
 #from selenium.webdriver.common.by import By
 #from selenium.webdriver.chrome.options import Options
-
-l_bound = 7
-u_bound = 10
-requests_cache.install_cache('niche_data_colleges', expire_after=3600 * 24 * 2) # caching responses so less requests to server
+encoding = 'utf-8'
+l_bound = 10
+u_bound = 12
+requests_cache.install_cache('niche_data_colleges', expire_after=3600 * 24) # caching responses so less requests to server
 ua = UserAgent()
 proxies = []
 cache_time = 3600 # Cache duration in seconds (1 hour)
@@ -107,6 +107,7 @@ def scrape_all_pages(url):
     return all_colleges
 
 def make_request(url):
+    print("making request for: " + url)
     headers, proxy = get_headers_and_proxy()
     response = requests.get(url, headers=headers, proxies=proxy)
     if not response.from_cache:
@@ -396,14 +397,14 @@ def convert_to_num(original):
 
 def get_current_written(filename):
     try:
-        with open(filename, 'r', newline='', encoding='utf-8') as file:
+        with open(filename, 'r', newline='', encoding=encoding) as file:
             reader = csv.DictReader(file)
             names = [row['name'] for row in reader]
             return names[0:], len(names)
     except FileNotFoundError:
         return [], 0
 def write_to_file(some_colleges, namefile):
-    with open(namefile, 'a', newline='') as file:
+    with open(namefile, 'a', newline='', encoding=encoding) as file:
         fieldnames = some_colleges[0].keys()
         writer = csv.DictWriter(file, fieldnames=fieldnames)
         #writer = csv.writer(file)
@@ -418,8 +419,10 @@ def write_to_file(some_colleges, namefile):
                 pass
 
 
+# deletes the last row
+
 def delete_row_by_number(name, row_number):
-    with open(name, mode='r', encoding='Latin1') as file:
+    with open(name, mode='r', encoding=encoding) as file:
         # Read the data into a list
         reader = csv.reader(file)
         rows = list(reader)
@@ -431,7 +434,7 @@ def delete_row_by_number(name, row_number):
     # Delete the row by index
     del rows[len(rows)-1]
 
-    with open(name, mode='w', newline='', encoding='Latin1') as file:
+    with open(name, mode='w', newline='', encoding=encoding) as file:
         # Write the updated data back to the CSV file
         writer = csv.writer(file)
         writer.writerows(rows)
@@ -481,15 +484,15 @@ def get_rand_proxy():
  # return random.randint(0, len(proxies) - 1)
 def main():
     #requests_cache.clear()
-    delete_row_by_number(filename, 0)
-    base_url = "https://www.niche.com/colleges/search/best-colleges/"
+    #delete_row_by_number(filename, 0)
+    base_url = "https://www.niche.com/colleges/search/best-colleges/?page=59"
     #base_url = "https://www.niche.com/colleges/search/best-colleges/?page=2"
 
     #delete_row_by_number(filename, 2)
     #c = scrape_some_pages(base_url, 2)
-    #c = scrape_all_pages(base_url)
-    #for i in c:
-       # print(i)
+    c = scrape_all_pages(base_url)
+    for i in c:
+        print(i)
 
 
 

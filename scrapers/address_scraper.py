@@ -10,11 +10,12 @@ import pandas as pd
 
 from selenium.webdriver.support.wait import WebDriverWait
 
+encoding = 'utf-8'
 filename = '../data/college.csv'
 
 def write_coordinates(file, col_name, col_based_on, col_based_on_2, driver):
     retries = 0
-    df = pd.read_csv(file, encoding='Latin1')
+    df = pd.read_csv(file, encoding=encoding)
     was_written = False
     if col_name not in df.columns:
         df[col_name] = None
@@ -30,7 +31,7 @@ def write_coordinates(file, col_name, col_based_on, col_based_on_2, driver):
                 coords = get_coordinates(by_address, driver)
                 print(coords)
                 df.at[index, col_name] = coords
-                df.to_csv(file, index=False, encoding='Latin1')
+                df.to_csv(file, index=False, encoding=encoding)
                # df['coords'] = df['coords'].apply(lambda x: ['X', 'Y'])
                 time.sleep(random.uniform(7,10))
             except TimeoutException:
@@ -38,7 +39,7 @@ def write_coordinates(file, col_name, col_based_on, col_based_on_2, driver):
                 coords = get_coordinates(by_name, driver)
                 print(coords)
                 df.at[index, col_name] = coords
-                df.to_csv(file, index=False, encoding='Latin1')
+                df.to_csv(file, index=False, encoding=encoding)
                 time.sleep(random.uniform(7, 10))
     print('Done writing!')
 

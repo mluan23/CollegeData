@@ -1,6 +1,6 @@
 //import '../node_modules/leaflet-boundary-canvas'
 
-
+// retrieves the CSV
 async function getCSV(){
     try {
         var response = await fetch('../data/college.csv');
@@ -8,13 +8,15 @@ async function getCSV(){
             throw new Error('Network response was not ok');
         }
         var data = await response.text(); // entire CSV as a single string
-        displayData(data);
+        console.log('Got CSV')
+       // displayData(data);
     } catch (error) {
         console.error('Failed to fetch CSV file:', error);
     }
+    return data
 }
 
-function initMap(){
+async function initMap(){
 // Initialize the map centered on a specific location
 var map = L.map('map', {
     center: [39.8283, -98.5795], // US center
@@ -31,6 +33,9 @@ $.getJSON('https://cdn.rawgit.com/johan/world.geo.json/34c96bba/countries/USA.ge
   var usLayer = L.geoJSON(geoJSON);
   map.fitBounds(usLayer.getBounds());
 });
+return map
+//const dataPromise = await getCSV();
+//addAddressToMap(dataPromise, map)
 
 // Add a tile layer to the map
 // L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -55,14 +60,53 @@ $.getJSON('https://cdn.rawgit.com/johan/world.geo.json/34c96bba/countries/USA.ge
 }
 
 
-function plotOnMap(){
+function plotOnMap(map){
     
 }
 
-function addAddressToMap(address){
+function addCoordToMap(data, map){
+    Papa.parse(data, {
+        header: true,
+        complete: function(results) {
+            console.log("Parsed Data:", results.data);
+            // You can now process the parsed data as needed
+            results.data.forEach(row => {
+                const coords = JSON.parse(row.coordinates.split(','));
+                const location = [parseFloat(coords[0]), parseFloat(coords[1])];
+                
+                // Ensure the coordinates are valid numbers
+                if (!isNaN(location[0]) && !isNaN(location[1])) {
+                    console.log(location[0] + ', ' + location[1]);
+                    L.marker(location).addTo(map);
+                } else {
+                    console.error('Invalid coordinates:', coords);
+                }
+            });
+        }
+    });
+}
+
+
+function addAddressToMap(data, map){
+    var lines = data.split('\n')
+    var headers = lines[0].split(',')
+    var coordIndex = headers.indexOf('coordinates')
+    if(coordIndex == -1){
+        coordIndex = headers.indexOf('coordinates\r')
+    }
+    for(var i = 1; i < lines.length; i++){
+        var l = lines[i].split(',')
+        var coord = l[coordIndex]
+        //console.log(headers)
+        console.log(lines[i])
+        //location = [l[0], l[1]]
+        L.marker(location).addTo(map)
+    }
     
 }
 
+
+// displays CSV data; should we use plotting here?
 function displayData(data){
     var lines = data.split('\n')
     var tableHeader = document.getElementById('tableHeader')
@@ -96,6 +140,19 @@ function displayData(data){
         tableBody.appendChild(tr)
     })
 }
+
+function run(){
+    try{
+        getCSV().then(data => {
+            initMap().then(map => {
+               // addCoordToMap(data, map)
+            })
+        })
+    } catch(error){
+        console.log(error)
+    }
+}
 // call getCSV when the page loads
+document.addEventListener('DOMContentLoaded', run());
 //document.addEventListener('DOMContentLoaded', getCSV());
-document.addEventListener('DOMContentLoaded', initMap());
+
