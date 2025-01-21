@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "@turf/turf": "^7.2.0",
     "leaflet-boundary-canvas": "^1.0.0",
     "papaparse": "^5.5.1"
   }

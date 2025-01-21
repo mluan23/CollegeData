@@ -1,5 +1,5 @@
 //import '../node_modules/leaflet-boundary-canvas'
-//const states = ['alabama','alaska','arizona','arkansas','california','colorado','connecticut','delaware','florida','georgia','hawaii','idaho','illinois','indiana','iowa','kentucky','louisiana','maine','maryland','massachusetts','michigan','minnesota','mississippi','missouri','montana','nebraska','nevada','new hampshire','new jersey','new mexico','new york','north carolina','north dakota','ohio','oklahoma','oregon','pennsylvania','rhode island','south carolina','south dakota','tennessee','texas','utah','vermont','virginia','washington','west virginia','wisconsin','wyoming']
+var states = ['alabama','alaska','arizona','arkansas','california','colorado','connecticut','delaware','florida','georgia','hawaii','idaho','illinois','indiana','iowa','kansas','kentucky','louisiana','maine','maryland','massachusetts','michigan','minnesota','mississippi','missouri','montana','nebraska','nevada','new hampshire','new jersey','new mexico','new york','north carolina','north dakota','ohio','oklahoma','oregon','pennsylvania','rhode island','south carolina','south dakota','tennessee','texas','utah','vermont','virginia','washington','west virginia','wisconsin','wyoming']
 // retrieves the CSV
 async function getCSVData(){
     try {
@@ -82,8 +82,12 @@ return map
 function loadStateGeoJSON(state, map) {
     const url = `https://raw.githubusercontent.com/glynnbird/usstatesgeojson/master/${state}.geojson`;
     $.getJSON(url, function(data) {
+        //console.log(data)
+        //checkPointInState(data, [42.3591895, -71.0931647])
+        checkPointInState(data, [-72.9279911, 41.3119])
+        //isPointInState(data, [41.3119, -72.9279911])
         L.geoJSON(data, {
-            style: geoLineStyle(data, 101),
+            style: geoLineStyle(data, 100),
             onEachFeature: eachFeatureStyle
         }).addTo(map);
     });
@@ -146,33 +150,102 @@ function plotOnMap(map){
     
 }
 
-// function parseData(data){
-//     Papa.parse(data, {
-//         header: true,
-//         complete: function(results) {
-//             // for some reason, the last data entry is just an empty name
-//             var r = results.data.slice(0,results.data.length-1)
-//             console.log("Parsed Data:", r);
-//             return r
+function checkPointInState(state, coord){
+    //var res = leafletPip.pointInLayer(coord, state)
+    //return res
+    //console.log(state)
+    var point = turf.point(coord)
+    var stateGeo = 0
+    //console.log(point)
+    //console.log(state)
+   // console.log(state.geometry.coordinates[0][0])
+    try{
+        stateGeo = turf.polygon(state.geometry.coordinates)
+    } catch(error){
+        //console.log(error)
+        stateGeo = turf.multiPolygon(state.geometry.coordinates)
+    }
+    //console.log(stateGeo)
+    //console.log(state._id)
+   // console.log(point)
+   // console.log(stateGeo)
+
+//     var pt = turf.point([-77, 44]);
+
+// var poly = turf.polygon([[
+//   [-81, 41],
+//   [-81, 47],
+//   [-72, 47],
+//   [-72, 41],
+//   [-81, 41]
+// ]]);
+// console.log(pt)
+
+// if(turf.booleanPointInPolygon(pt, poly)){
+//     console.log('test')
+// }
+    //console.log(state._id)
+    if(turf.booleanPointInPolygon(point, stateGeo)){
+        //console.log('in')
+        console.log(state._id)
+    }
+    return turf
+}
+
+
+
+
+// function isPointInState(state, point) {
+//     const pointFeature = turf.point(point); // Create a Turf.js point feature
+
+//     // Check if the state's geometry type is MultiPolygon
+//     if (state.geometry.type === 'MultiPolygon') {
+//         for (const polygon of state.geometry.coordinates) {
+//             const stateGeo = turf.multiPolygon([polygon]); // Create Turf.js MultiPolygon
+//             if (turf.booleanPointInPolygon(pointFeature, stateGeo)) {
+//                 console.log(state.properties.name)
+//                 return state.properties.name; // Return the state name if the point is inside
+//             }
 //         }
-//     });
+//     } else if (state.geometry.type === 'Polygon') {
+//         const stateGeo = turf.polygon(state.geometry.coordinates); // Create Turf.js Polygon
+//         if (turf.booleanPointInPolygon(pointFeature, stateGeo)) {
+//             console.log(state.properties.name)
+//             return state.properties.name; // Return the state name if the point is inside
+//         }
+//     }
+//     console.log('no')
+
+//     return null; // Return null if the point is not in any part of the state
 // }
 
-function addCoordToMap(data, map, colName){
-    console.log(data)
+
+
+
+
+
+
+function getStateFromPoint(coord){
+    var point = turf.point(coord)
+}
+
+function getCounts(data, map, colName, state){ 
+   // var count
     data.forEach(row => {
-        const coords = JSON.parse(row.coordinates.split(',')).map(parseFloat);
+        // the coord is a string, with 
+        const coords = JSON.parse(row['coordinates']); 
         const location = [coords[0], coords[1]];
-        //const name = JSON.parse(row.name)
+        const name = row.rank
         //console.log(name)
         // Ensure the coordinates are valid numbers
         if (!isNaN(location[0]) && !isNaN(location[1])) {
-            console.log(location[0] + ', ' + location[1]);
+            //console.log(location[0] + ', ' + location[1]);
             // L.marker(location).addTo(map);
         } else {
             console.error('Invalid coordinates:', coords);
         }
     });
+   // return count
 }
 
 
@@ -191,8 +264,8 @@ function addAddressToMap(data, map){
         //location = [l[0], l[1]]
         L.marker(location).addTo(map)
     }
-    
 }
+
 
 
 // displays CSV data; should we use plotting here?
@@ -240,11 +313,11 @@ function getColor(count){
 }
 
 function run(){
-    const states = ['alabama','alaska','arizona','arkansas','california','colorado','connecticut','delaware','florida','georgia','hawaii','idaho','illinois','indiana','iowa','kansas','kentucky','louisiana','maine','maryland','massachusetts','michigan','minnesota','mississippi','missouri','montana','nebraska','nevada','new hampshire','new jersey','new mexico','new york','north carolina','north dakota','ohio','oklahoma','oregon','pennsylvania','rhode island','south carolina','south dakota','tennessee','texas','utah','vermont','virginia','washington','west virginia','wisconsin','wyoming']
+    //const states = ['alabama','alaska','arizona','arkansas','california','colorado','connecticut','delaware','florida','georgia','hawaii','idaho','illinois','indiana','iowa','kansas','kentucky','louisiana','maine','maryland','massachusetts','michigan','minnesota','mississippi','missouri','montana','nebraska','nevada','new hampshire','new jersey','new mexico','new york','north carolina','north dakota','ohio','oklahoma','oregon','pennsylvania','rhode island','south carolina','south dakota','tennessee','texas','utah','vermont','virginia','washington','west virginia','wisconsin','wyoming']
     try{
         getCSVData().then(data => {
             initMap().then(map => {
-                addCoordToMap(data, map, 'coordinates')
+                getCounts(data, map, 'coordinates')
             //    loadStateGeoJSON(states[0], map)
             //    loadStateGeoJSON('new york', map)
                 states.forEach(state => {
