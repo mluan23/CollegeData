@@ -1,7 +1,7 @@
 //import '../node_modules/leaflet-boundary-canvas'
 //const states = ['alabama','alaska','arizona','arkansas','california','colorado','connecticut','delaware','florida','georgia','hawaii','idaho','illinois','indiana','iowa','kentucky','louisiana','maine','maryland','massachusetts','michigan','minnesota','mississippi','missouri','montana','nebraska','nevada','new hampshire','new jersey','new mexico','new york','north carolina','north dakota','ohio','oklahoma','oregon','pennsylvania','rhode island','south carolina','south dakota','tennessee','texas','utah','vermont','virginia','washington','west virginia','wisconsin','wyoming']
 // retrieves the CSV
-async function getCSV(){
+async function getCSVData(){
     try {
         var response = await fetch('../data/college.csv');
         if (!response.ok) {
@@ -13,7 +13,21 @@ async function getCSV(){
     } catch (error) {
         console.error('Failed to fetch CSV file:', error);
     }
-    return data
+    // since papa parses async
+    return new Promise((resolve, reject) => {
+        Papa.parse(data, {
+            header: true,
+            complete: function(results) {
+                // for some reason, the last data entry is just an empty name
+                var r = results.data.slice(0,results.data.length-1)
+                console.log("Parsed Data:", r);
+                resolve(r)
+            },
+            error: function(error){
+                reject(error)
+            }
+        });
+    });
 }
 
 async function initMap(){
@@ -69,15 +83,15 @@ function loadStateGeoJSON(state, map) {
     const url = `https://raw.githubusercontent.com/glynnbird/usstatesgeojson/master/${state}.geojson`;
     $.getJSON(url, function(data) {
         L.geoJSON(data, {
-            style: geoLineStyle,
+            style: geoLineStyle(data, 101),
             onEachFeature: eachFeatureStyle
         }).addTo(map);
     });
 }
 
-function geoLineStyle(feature){
+function geoLineStyle(feature, color){
     return {
-        fillColor: 'white',
+        fillColor: getColor(color),
         weight: 1,
         opacity: 1,
         color: 'blue',
@@ -97,15 +111,15 @@ function eachFeatureStyle(feature, layer){
 function highlightFeature(e) {
     var layer = e.target;
     layer.setStyle({
-        weight: 10,
-        color: '#666',
+        weight: 1,
+        color: 'red',
         dashArray: '',
         fillOpacity: 0.7
     });
 
-    if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
-        layer.bringToFront();
-    }
+    // if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
+    //     layer.bringToFront();
+    // }
 }
 
 // Function to reset highlight on mouseout
@@ -132,24 +146,31 @@ function plotOnMap(map){
     
 }
 
-function addCoordToMap(data, map){
-    Papa.parse(data, {
-        header: true,
-        complete: function(results) {
-            console.log("Parsed Data:", results.data);
-            // You can now process the parsed data as needed
-            results.data.forEach(row => {
-                const coords = JSON.parse(row.coordinates.split(','));
-                const location = [parseFloat(coords[0]), parseFloat(coords[1])];
-                
-                // Ensure the coordinates are valid numbers
-                if (!isNaN(location[0]) && !isNaN(location[1])) {
-                    console.log(location[0] + ', ' + location[1]);
-                    L.marker(location).addTo(map);
-                } else {
-                    console.error('Invalid coordinates:', coords);
-                }
-            });
+// function parseData(data){
+//     Papa.parse(data, {
+//         header: true,
+//         complete: function(results) {
+//             // for some reason, the last data entry is just an empty name
+//             var r = results.data.slice(0,results.data.length-1)
+//             console.log("Parsed Data:", r);
+//             return r
+//         }
+//     });
+// }
+
+function addCoordToMap(data, map, colName){
+    console.log(data)
+    data.forEach(row => {
+        const coords = JSON.parse(row.coordinates.split(',')).map(parseFloat);
+        const location = [coords[0], coords[1]];
+        //const name = JSON.parse(row.name)
+        //console.log(name)
+        // Ensure the coordinates are valid numbers
+        if (!isNaN(location[0]) && !isNaN(location[1])) {
+            console.log(location[0] + ', ' + location[1]);
+            // L.marker(location).addTo(map);
+        } else {
+            console.error('Invalid coordinates:', coords);
         }
     });
 }
@@ -209,12 +230,21 @@ function displayData(data){
     })
 }
 
+function getColor(count){
+    return count > 100 ? 'red':
+           count > 50 ? 'orange':
+           count > 25 ? 'yellow':
+           count > 10 ? 'blue':
+           count > 0 ? 'black':
+           'white';
+}
+
 function run(){
-    const states = ['alabama','alaska','arizona','arkansas','california','colorado','connecticut','delaware','florida','georgia','hawaii','idaho','illinois','indiana','iowa','kentucky','louisiana','maine','maryland','massachusetts','michigan','minnesota','mississippi','missouri','montana','nebraska','nevada','new hampshire','new jersey','new mexico','new york','north carolina','north dakota','ohio','oklahoma','oregon','pennsylvania','rhode island','south carolina','south dakota','tennessee','texas','utah','vermont','virginia','washington','west virginia','wisconsin','wyoming']
+    const states = ['alabama','alaska','arizona','arkansas','california','colorado','connecticut','delaware','florida','georgia','hawaii','idaho','illinois','indiana','iowa','kansas','kentucky','louisiana','maine','maryland','massachusetts','michigan','minnesota','mississippi','missouri','montana','nebraska','nevada','new hampshire','new jersey','new mexico','new york','north carolina','north dakota','ohio','oklahoma','oregon','pennsylvania','rhode island','south carolina','south dakota','tennessee','texas','utah','vermont','virginia','washington','west virginia','wisconsin','wyoming']
     try{
-        getCSV().then(data => {
+        getCSVData().then(data => {
             initMap().then(map => {
-            //    // addCoordToMap(data, map)
+                addCoordToMap(data, map, 'coordinates')
             //    loadStateGeoJSON(states[0], map)
             //    loadStateGeoJSON('new york', map)
                 states.forEach(state => {
