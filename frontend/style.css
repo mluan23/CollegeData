@@ -1,0 +1,8 @@
+.state:hover{
+    background-color: 'white';
+    font-weight: 1;
+    opacity: 1;
+    color: 'blue';
+    fill-opacity: 0.7;
+
+}

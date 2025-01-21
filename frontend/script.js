@@ -1,5 +1,5 @@
 //import '../node_modules/leaflet-boundary-canvas'
-
+//const states = ['alabama','alaska','arizona','arkansas','california','colorado','connecticut','delaware','florida','georgia','hawaii','idaho','illinois','indiana','iowa','kentucky','louisiana','maine','maryland','massachusetts','michigan','minnesota','mississippi','missouri','montana','nebraska','nevada','new hampshire','new jersey','new mexico','new york','north carolina','north dakota','ohio','oklahoma','oregon','pennsylvania','rhode island','south carolina','south dakota','tennessee','texas','utah','vermont','virginia','washington','west virginia','wisconsin','wyoming']
 // retrieves the CSV
 async function getCSV(){
     try {
@@ -58,6 +58,74 @@ return map
 //     .bindPopup('<a href="https://www.openstreetmap.org/search?query=40.7128,-74.0060" target="_blank">View Address</a>')
 //     .openPopup();
 }
+
+// function loadState(state){
+//     const url = `https://raw.githubusercontent.com/glynnbird/usstatesgeojson/master/${state}.geojson`;
+//     $.getJSON(url, function(data))
+// }
+
+// Function to load state GeoJSON data
+function loadStateGeoJSON(state, map) {
+    const url = `https://raw.githubusercontent.com/glynnbird/usstatesgeojson/master/${state}.geojson`;
+    $.getJSON(url, function(data) {
+        L.geoJSON(data, {
+            style: geoLineStyle,
+            onEachFeature: eachFeatureStyle
+        }).addTo(map);
+    });
+}
+
+function geoLineStyle(feature){
+    return {
+        fillColor: 'white',
+        weight: 1,
+        opacity: 1,
+        color: 'blue',
+        fillOpacity: 0.7
+    };
+}
+
+function eachFeatureStyle(feature, layer){
+    layer.on({
+        mouseover: highlightFeature,
+        mouseout: resetHighlight,
+        click: zoomToFeature
+    });
+}
+
+// Function to highlight feature on mouseover
+function highlightFeature(e) {
+    var layer = e.target;
+    layer.setStyle({
+        weight: 10,
+        color: '#666',
+        dashArray: '',
+        fillOpacity: 0.7
+    });
+
+    if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
+        layer.bringToFront();
+    }
+}
+
+// Function to reset highlight on mouseout
+function resetHighlight(e) {
+    var layer = e.target
+    layer.setStyle({
+        fillColor: 'white',
+        weight: 1,
+        opacity: 1,
+        color: 'blue',
+        fillOpacity: 0.7
+    })
+}
+
+// Function to zoom to feature on click
+function zoomToFeature(e) {
+    map.fitBounds(e.target.getBounds());
+}
+
+
 
 
 function plotOnMap(map){
@@ -142,10 +210,17 @@ function displayData(data){
 }
 
 function run(){
+    const states = ['alabama','alaska','arizona','arkansas','california','colorado','connecticut','delaware','florida','georgia','hawaii','idaho','illinois','indiana','iowa','kentucky','louisiana','maine','maryland','massachusetts','michigan','minnesota','mississippi','missouri','montana','nebraska','nevada','new hampshire','new jersey','new mexico','new york','north carolina','north dakota','ohio','oklahoma','oregon','pennsylvania','rhode island','south carolina','south dakota','tennessee','texas','utah','vermont','virginia','washington','west virginia','wisconsin','wyoming']
     try{
         getCSV().then(data => {
             initMap().then(map => {
-               // addCoordToMap(data, map)
+            //    // addCoordToMap(data, map)
+            //    loadStateGeoJSON(states[0], map)
+            //    loadStateGeoJSON('new york', map)
+                states.forEach(state => {
+                    loadStateGeoJSON(state, map)
+                })
+
             })
         })
     } catch(error){
