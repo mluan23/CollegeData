@@ -8,7 +8,7 @@ async function getCSVData(){
             throw new Error('Network response was not ok');
         }
         var data = await response.text(); // entire CSV as a single string
-        console.log('Got CSV')
+        //console.log('Got CSV')
        // displayData(data);
     } catch (error) {
         console.error('Failed to fetch CSV file:', error);
@@ -21,7 +21,7 @@ async function getCSVData(){
                 // for some reason, the last data entry is just an empty name
                 var r = results.data.slice(0,results.data.length-1)
                 //console.log("Parsed Data:", r);
-                console.log(r)
+                //console.log(r)
                 resolve(r)
             },
             error: function(error){
@@ -88,13 +88,14 @@ function loadStateGeoJSON(state, map) {
             //checkPointInState(data, [42.3591895, -71.0931647])
             // we need to reverse the latitude and longitude positions
             //checkPointInState(data, [-72.9279911, 41.3119])
-            checkPointInState([41.3119, -72.9279911], data)
+            //checkPointInState([41.3119, -72.9279911], data)
             L.geoJSON(data, {
                 style: geoLineStyle(data, 100),
                 onEachFeature: eachFeatureStyle
             }).addTo(map);
             resolve(data)
         }).fail(function(){
+            console.log('failure')
             reject(new Error(`fail to load geoJSON for ${state}`))
         })
     })
@@ -175,7 +176,7 @@ function checkPointInState(coord, stateGeoJSON){
     }
 
     if(turf.booleanPointInPolygon(point, stateGeo)){
-        console.log(stateGeoJSON._id)
+        //console.log(stateGeoJSON._id)
         return true
     }
    // console.log('non')
@@ -217,14 +218,21 @@ function checkPointInState(coord, stateGeoJSON){
 
 function getStateFromPoint(coord, geoJSONMappings){
     // for each state, in their geoJSON representations
-    for(const [state, geoJSON] of Object.entries(geoJSONMappings)){
+    //console.log(coord)
+    //console.log(geoJSONMappings)
+    // geoJSONMappings.forEach((value, key, geoJSONMappings) => {
+    //     console.log('testtt')
+    // })
+    // console.log(geoJSONMappings.entries())
+    //console.log(geoJSONMappings)
+    for(const [state, geoJSON] of geoJSONMappings.entries()){
         //console.log(geoJSON)
         // check if the point is in the 
-        console.log(state)
+        //console.log('test')
         if(checkPointInState(coord, geoJSON)){
+            console.log(state)
             return state
         }
-        //console.log(state)
     }
     return 'not in a state'
     // geoJSONMappings.forEach(state => {
@@ -318,27 +326,36 @@ function getColor(count){
 }
 
 function run(){
-    var geoJSONMappings = {}
+    var geoJSONMappings = new Map()
+    var promises = []
     //const states = ['alabama','alaska','arizona','arkansas','california','colorado','connecticut','delaware','florida','georgia','hawaii','idaho','illinois','indiana','iowa','kansas','kentucky','louisiana','maine','maryland','massachusetts','michigan','minnesota','mississippi','missouri','montana','nebraska','nevada','new hampshire','new jersey','new mexico','new york','north carolina','north dakota','ohio','oklahoma','oregon','pennsylvania','rhode island','south carolina','south dakota','tennessee','texas','utah','vermont','virginia','washington','west virginia','wisconsin','wyoming']
     try{
-        getCSVData().then(data => {
+        getCSVData().then(async data => {
             var map = initMap()
             //getCounts(data, map, 'coordinates')
             states.forEach(state => {
-                loadStateGeoJSON(state, map).then(geoJSON => {
+                const promise = loadStateGeoJSON(state, map).then(geoJSON => {
                     //const coords = JSON.parse(row['coordinates']);
                     //console.log(geoJSON)
-                    geoJSONMappings[state] = geoJSON
+                   // console.log(geoJSON)
+                    geoJSONMappings.set(state, geoJSON)
+                    console.log(geoJSONMappings)
                     //console.log(geoJSONMappings)
                     //getStateFromPoint([42.3591895, -71.0931647], geoJSONMappings)
                 })
+                promises.push(promise)
                 //console.log(geoJSONMappings)
             })
+            await Promise.all(promises)
+
+            // we need to wait for all promises to be resolved before we can attempt to get the stuff
             data.forEach(row => {
                 const coords = JSON.parse(row['coordinates'])
-                //console.log(coords)
+                //console.log(geoJSONMappings)
                 getStateFromPoint(coords, geoJSONMappings)
             })
+            //console.log(geoJSONMappings)
+            //console.log(te)
             // initMap().then(map => {
             //     getCounts(data, map, 'coordinates')
             // //    loadStateGeoJSON(states[0], map)
