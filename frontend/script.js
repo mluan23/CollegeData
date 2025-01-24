@@ -20,7 +20,8 @@ async function getCSVData(){
             complete: function(results) {
                 // for some reason, the last data entry is just an empty name
                 var r = results.data.slice(0,results.data.length-1)
-                console.log("Parsed Data:", r);
+                //console.log("Parsed Data:", r);
+                console.log(r)
                 resolve(r)
             },
             error: function(error){
@@ -30,7 +31,7 @@ async function getCSVData(){
     });
 }
 
-async function initMap(){
+function initMap(){
 // Initialize the map centered on a specific location
 var map = L.map('map', {
     center: [39.8283, -98.5795], // US center
@@ -81,16 +82,23 @@ return map
 // Function to load state GeoJSON data
 function loadStateGeoJSON(state, map) {
     const url = `https://raw.githubusercontent.com/glynnbird/usstatesgeojson/master/${state}.geojson`;
-    $.getJSON(url, function(data) {
-        //console.log(data)
-        //checkPointInState(data, [42.3591895, -71.0931647])
-        checkPointInState(data, [-72.9279911, 41.3119])
-        //isPointInState(data, [41.3119, -72.9279911])
-        L.geoJSON(data, {
-            style: geoLineStyle(data, 100),
-            onEachFeature: eachFeatureStyle
-        }).addTo(map);
-    });
+    return new Promise((resolve , reject) => {
+        $.getJSON(url, function(data) {
+            //console.log(data)
+            //checkPointInState(data, [42.3591895, -71.0931647])
+            // we need to reverse the latitude and longitude positions
+            //checkPointInState(data, [-72.9279911, 41.3119])
+            checkPointInState([41.3119, -72.9279911], data)
+            L.geoJSON(data, {
+                style: geoLineStyle(data, 100),
+                onEachFeature: eachFeatureStyle
+            }).addTo(map);
+            resolve(data)
+        }).fail(function(){
+            reject(new Error(`fail to load geoJSON for ${state}`))
+        })
+    })
+
 }
 
 function geoLineStyle(feature, color){
@@ -150,46 +158,28 @@ function plotOnMap(map){
     
 }
 
-function checkPointInState(state, coord){
-    //var res = leafletPip.pointInLayer(coord, state)
-    //return res
-    //console.log(state)
+function checkPointInState(coord, stateGeoJSON){
+    // since we need to reverse lat and long
+    var x = coord[1]
+    var y = coord[0]
+    coord[0] = x
+    coord[1] = y
     var point = turf.point(coord)
     var stateGeo = 0
-    //console.log(point)
-    //console.log(state)
-   // console.log(state.geometry.coordinates[0][0])
+    //console.log(stateGeoJSON)
     try{
-        stateGeo = turf.polygon(state.geometry.coordinates)
+        stateGeo = turf.polygon(stateGeoJSON.geometry.coordinates)
     } catch(error){
         //console.log(error)
-        stateGeo = turf.multiPolygon(state.geometry.coordinates)
+        stateGeo = turf.multiPolygon(stateGeoJSON.geometry.coordinates)
     }
-    //console.log(stateGeo)
-    //console.log(state._id)
-   // console.log(point)
-   // console.log(stateGeo)
 
-//     var pt = turf.point([-77, 44]);
-
-// var poly = turf.polygon([[
-//   [-81, 41],
-//   [-81, 47],
-//   [-72, 47],
-//   [-72, 41],
-//   [-81, 41]
-// ]]);
-// console.log(pt)
-
-// if(turf.booleanPointInPolygon(pt, poly)){
-//     console.log('test')
-// }
-    //console.log(state._id)
     if(turf.booleanPointInPolygon(point, stateGeo)){
-        //console.log('in')
-        console.log(state._id)
+        console.log(stateGeoJSON._id)
+        return true
     }
-    return turf
+   // console.log('non')
+    return false
 }
 
 
@@ -225,8 +215,23 @@ function checkPointInState(state, coord){
 
 
 
-function getStateFromPoint(coord){
-    var point = turf.point(coord)
+function getStateFromPoint(coord, geoJSONMappings){
+    // for each state, in their geoJSON representations
+    for(const [state, geoJSON] of Object.entries(geoJSONMappings)){
+        //console.log(geoJSON)
+        // check if the point is in the 
+        console.log(state)
+        if(checkPointInState(coord, geoJSON)){
+            return state
+        }
+        //console.log(state)
+    }
+    return 'not in a state'
+    // geoJSONMappings.forEach(state => {
+    //     var statePoly = checkPointInState(state, coord)
+    //     return statePoly
+    // })
+    // return 'not in US'
 }
 
 function getCounts(data, map, colName, state){ 
@@ -313,18 +318,38 @@ function getColor(count){
 }
 
 function run(){
+    var geoJSONMappings = {}
     //const states = ['alabama','alaska','arizona','arkansas','california','colorado','connecticut','delaware','florida','georgia','hawaii','idaho','illinois','indiana','iowa','kansas','kentucky','louisiana','maine','maryland','massachusetts','michigan','minnesota','mississippi','missouri','montana','nebraska','nevada','new hampshire','new jersey','new mexico','new york','north carolina','north dakota','ohio','oklahoma','oregon','pennsylvania','rhode island','south carolina','south dakota','tennessee','texas','utah','vermont','virginia','washington','west virginia','wisconsin','wyoming']
     try{
         getCSVData().then(data => {
-            initMap().then(map => {
-                getCounts(data, map, 'coordinates')
-            //    loadStateGeoJSON(states[0], map)
-            //    loadStateGeoJSON('new york', map)
-                states.forEach(state => {
-                    loadStateGeoJSON(state, map)
+            var map = initMap()
+            //getCounts(data, map, 'coordinates')
+            states.forEach(state => {
+                loadStateGeoJSON(state, map).then(geoJSON => {
+                    //const coords = JSON.parse(row['coordinates']);
+                    //console.log(geoJSON)
+                    geoJSONMappings[state] = geoJSON
+                    //console.log(geoJSONMappings)
+                    //getStateFromPoint([42.3591895, -71.0931647], geoJSONMappings)
                 })
-
+                //console.log(geoJSONMappings)
             })
+            data.forEach(row => {
+                const coords = JSON.parse(row['coordinates'])
+                //console.log(coords)
+                getStateFromPoint(coords, geoJSONMappings)
+            })
+            // initMap().then(map => {
+            //     getCounts(data, map, 'coordinates')
+            // //    loadStateGeoJSON(states[0], map)
+            // //    loadStateGeoJSON('new york', map)
+            //     states.forEach(state => {
+            //         loadStateGeoJSON(state, map)
+            //     })
+
+            //})
+           // console.log('test')
+            //console.log(data)
         })
     } catch(error){
         console.log(error)
