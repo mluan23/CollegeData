@@ -1,5 +1,6 @@
 //import '../node_modules/leaflet-boundary-canvas'
-var states = ['alabama','alaska','arizona','arkansas','california','colorado','connecticut','delaware','florida','georgia','hawaii','idaho','illinois','indiana','iowa','kansas','kentucky','louisiana','maine','maryland','massachusetts','michigan','minnesota','mississippi','missouri','montana','nebraska','nevada','new hampshire','new jersey','new mexico','new york','north carolina','north dakota','ohio','oklahoma','oregon','pennsylvania','rhode island','south carolina','south dakota','tennessee','texas','utah','vermont','virginia','washington','west virginia','wisconsin','wyoming']
+// washington dc not a state but good enough
+var states = ['washington dc','alabama','alaska','arizona','arkansas','california','colorado','connecticut','delaware','florida','georgia','hawaii','idaho','illinois','indiana','iowa','kansas','kentucky','louisiana','maine','maryland','massachusetts','michigan','minnesota','mississippi','missouri','montana','nebraska','nevada','new hampshire','new jersey','new mexico','new york','north carolina','north dakota','ohio','oklahoma','oregon','pennsylvania','rhode island','south carolina','south dakota','tennessee','texas','utah','vermont','virginia','washington','west virginia','wisconsin','wyoming']
 // retrieves the CSV
 async function getCSVData(){
     try {
@@ -81,7 +82,10 @@ return map
 
 // Function to load state GeoJSON data
 function loadStateGeoJSON(state, map) {
-    const url = `https://raw.githubusercontent.com/glynnbird/usstatesgeojson/master/${state}.geojson`;
+    var url = `https://raw.githubusercontent.com/glynnbird/usstatesgeojson/master/${state}.geojson`;
+    if(state == 'washington dc'){
+        url = 'https://github.com/benbalter/dc-maps/blob/master/maps/assessment-neighborhoods.geojson'
+    }
     return new Promise((resolve , reject) => {
         $.getJSON(url, function(data) {
             //console.log(data)
@@ -159,12 +163,12 @@ function plotOnMap(map){
     
 }
 
-function checkPointInState(coord, stateGeoJSON){
+function checkPointInState(coords, stateGeoJSON){
     // since we need to reverse lat and long
-    var x = coord[1]
-    var y = coord[0]
-    coord[0] = x
-    coord[1] = y
+    var x = coords[1]
+    var y = coords[0]
+    var coord = [x,y]
+    //console.log(coord[0] + ", " + coord[1])
     var point = turf.point(coord)
     var stateGeo = 0
     //console.log(stateGeoJSON)
@@ -218,28 +222,13 @@ function checkPointInState(coord, stateGeoJSON){
 
 function getStateFromPoint(coord, geoJSONMappings){
     // for each state, in their geoJSON representations
-    //console.log(coord)
-    //console.log(geoJSONMappings)
-    // geoJSONMappings.forEach((value, key, geoJSONMappings) => {
-    //     console.log('testtt')
-    // })
-    // console.log(geoJSONMappings.entries())
-    //console.log(geoJSONMappings)
     for(const [state, geoJSON] of geoJSONMappings.entries()){
-        //console.log(geoJSON)
-        // check if the point is in the 
-        //console.log('test')
         if(checkPointInState(coord, geoJSON)){
-            console.log(state)
             return state
         }
     }
+    console.log(coord)
     return 'not in a state'
-    // geoJSONMappings.forEach(state => {
-    //     var statePoly = checkPointInState(state, coord)
-    //     return statePoly
-    // })
-    // return 'not in US'
 }
 
 function getCounts(data, map, colName, state){ 
@@ -327,6 +316,7 @@ function getColor(count){
 
 function run(){
     var geoJSONMappings = new Map()
+    var stateCounts = new Map()
     var promises = []
     //const states = ['alabama','alaska','arizona','arkansas','california','colorado','connecticut','delaware','florida','georgia','hawaii','idaho','illinois','indiana','iowa','kansas','kentucky','louisiana','maine','maryland','massachusetts','michigan','minnesota','mississippi','missouri','montana','nebraska','nevada','new hampshire','new jersey','new mexico','new york','north carolina','north dakota','ohio','oklahoma','oregon','pennsylvania','rhode island','south carolina','south dakota','tennessee','texas','utah','vermont','virginia','washington','west virginia','wisconsin','wyoming']
     try{
@@ -335,25 +325,41 @@ function run(){
             //getCounts(data, map, 'coordinates')
             states.forEach(state => {
                 const promise = loadStateGeoJSON(state, map).then(geoJSON => {
+                    //if(state == 'washington')
+                      //  console.log(checkPointInState([38.9076789, -77.0716024], geoJSON))
                     //const coords = JSON.parse(row['coordinates']);
                     //console.log(geoJSON)
                    // console.log(geoJSON)
                     geoJSONMappings.set(state, geoJSON)
-                    console.log(geoJSONMappings)
                     //console.log(geoJSONMappings)
-                    //getStateFromPoint([42.3591895, -71.0931647], geoJSONMappings)
+                    stateCounts.set(state,0)
+                    //console.log(geoJSONMappings)
+                    //[33.4218938, -111.9400681]         
+                    //console.log(getStateFromPoint([-71.0931647, 42.3591895], geoJSONMappings))
                 })
                 promises.push(promise)
                 //console.log(geoJSONMappings)
             })
             await Promise.all(promises)
+            // states.forEach(state => {
+            //      console.log(getStateFromPoint([38.9076789, -77.0716024], geoJSONMappings))
+            // })
 
             // we need to wait for all promises to be resolved before we can attempt to get the stuff
             data.forEach(row => {
                 const coords = JSON.parse(row['coordinates'])
+                coords[0] = coords[0]
+                coords[1] = coords[1]
                 //console.log(geoJSONMappings)
-                getStateFromPoint(coords, geoJSONMappings)
+                var s = getStateFromPoint(coords, geoJSONMappings)
+                stateCounts.set(s, stateCounts.get(s)+1)
             })
+            console.log(stateCounts)
+            var sum = 0
+            states.forEach(state => {
+                sum += stateCounts.get(state)
+            })
+            console.log(sum)
             //console.log(geoJSONMappings)
             //console.log(te)
             // initMap().then(map => {
