@@ -1,6 +1,7 @@
 //import '../node_modules/leaflet-boundary-canvas'
 // washington dc not a state but good enough
-var states = ['washington dc','alabama','alaska','arizona','arkansas','california','colorado','connecticut','delaware','florida','georgia','hawaii','idaho','illinois','indiana','iowa','kansas','kentucky','louisiana','maine','maryland','massachusetts','michigan','minnesota','mississippi','missouri','montana','nebraska','nevada','new hampshire','new jersey','new mexico','new york','north carolina','north dakota','ohio','oklahoma','oregon','pennsylvania','rhode island','south carolina','south dakota','tennessee','texas','utah','vermont','virginia','washington','west virginia','wisconsin','wyoming']
+var states = []
+var statess = ['washington dc','alabama','alaska','arizona','arkansas','california','colorado','connecticut','delaware','florida','georgia','hawaii','idaho','illinois','indiana','iowa','kansas','kentucky','louisiana','maine','maryland','massachusetts','michigan','minnesota','mississippi','missouri','montana','nebraska','nevada','new hampshire','new jersey','new mexico','new york','north carolina','north dakota','ohio','oklahoma','oregon','pennsylvania','rhode island','south carolina','south dakota','tennessee','texas','utah','vermont','virginia','washington','west virginia','wisconsin','wyoming']
 // retrieves the CSV
 async function getCSVData(){
     try {
@@ -30,6 +31,14 @@ async function getCSVData(){
             }
         });
     });
+}
+
+async function getTerritoryNames(){
+    var response = await fetch('../data/territories_geo_json/State_Names.txt')
+    var data = await response.text()
+    states = data.split('\r\n')
+    console.log(states)
+    console.log(statess)
 }
 
 function initMap(){
@@ -379,6 +388,8 @@ function run(){
     }
 }
 // call getCSV when the page loads
-document.addEventListener('DOMContentLoaded', run());
+//document.addEventListener('DOMContentLoaded', run());
+document.addEventListener('DOMContentLoaded', getTerritoryNames());
+
 //document.addEventListener('DOMContentLoaded', getCSV());
 
