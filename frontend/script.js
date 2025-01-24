@@ -1,7 +1,7 @@
 //import '../node_modules/leaflet-boundary-canvas'
 // washington dc not a state but good enough
 var states = []
-var statess = ['washington dc','alabama','alaska','arizona','arkansas','california','colorado','connecticut','delaware','florida','georgia','hawaii','idaho','illinois','indiana','iowa','kansas','kentucky','louisiana','maine','maryland','massachusetts','michigan','minnesota','mississippi','missouri','montana','nebraska','nevada','new hampshire','new jersey','new mexico','new york','north carolina','north dakota','ohio','oklahoma','oregon','pennsylvania','rhode island','south carolina','south dakota','tennessee','texas','utah','vermont','virginia','washington','west virginia','wisconsin','wyoming']
+//var states = ['alabama','alaska','arizona','arkansas','california','colorado','connecticut','delaware','florida','georgia','hawaii','idaho','illinois','indiana','iowa','kansas','kentucky','louisiana','maine','maryland','massachusetts','michigan','minnesota','mississippi','missouri','montana','nebraska','nevada','new hampshire','new jersey','new mexico','new york','north carolina','north dakota','ohio','oklahoma','oregon','pennsylvania','rhode island','south carolina','south dakota','tennessee','texas','utah','vermont','virginia','washington','west virginia','wisconsin','wyoming']
 // retrieves the CSV
 async function getCSVData(){
     try {
@@ -38,7 +38,7 @@ async function getTerritoryNames(){
     var data = await response.text()
     states = data.split('\r\n')
     console.log(states)
-    console.log(statess)
+    // console.log(statess)
 }
 
 function initMap(){
@@ -91,12 +91,12 @@ return map
 
 // Function to load state GeoJSON data
 function loadStateGeoJSON(state, map) {
-    var url = `https://raw.githubusercontent.com/glynnbird/usstatesgeojson/master/${state}.geojson`;
-    if(state == 'washington dc'){
-        url = 'https://github.com/benbalter/dc-maps/blob/master/maps/assessment-neighborhoods.geojson'
-    }
+    var file = `../data/territories_geo_json/${state}.geojson`;
+    // if(state == 'washington dc'){
+    // const file = `https://raw.githubusercontent.com/glynnbird/usstatesgeojson/master/${state}.geojson`;
+    // }
     return new Promise((resolve , reject) => {
-        $.getJSON(url, function(data) {
+        $.getJSON(file, function(data) {
             //console.log(data)
             //checkPointInState(data, [42.3591895, -71.0931647])
             // we need to reverse the latitude and longitude positions
@@ -181,11 +181,12 @@ function checkPointInState(coords, stateGeoJSON){
     var point = turf.point(coord)
     var stateGeo = 0
     //console.log(stateGeoJSON)
+    //console.log(stateGeoJSON.features[0])
     try{
-        stateGeo = turf.polygon(stateGeoJSON.geometry.coordinates)
+        stateGeo = turf.polygon(stateGeoJSON.features[0].geometry.coordinates)
     } catch(error){
         //console.log(error)
-        stateGeo = turf.multiPolygon(stateGeoJSON.geometry.coordinates)
+        stateGeo = turf.multiPolygon(stateGeoJSON.features[0].geometry.coordinates)
     }
 
     if(turf.booleanPointInPolygon(point, stateGeo)){
@@ -323,7 +324,8 @@ function getColor(count){
            'white';
 }
 
-function run(){
+async function run(){
+    await getTerritoryNames()
     var geoJSONMappings = new Map()
     var stateCounts = new Map()
     var promises = []
@@ -360,6 +362,7 @@ function run(){
                 coords[0] = coords[0]
                 coords[1] = coords[1]
                 //console.log(geoJSONMappings)
+                //console.log(states)
                 var s = getStateFromPoint(coords, geoJSONMappings)
                 stateCounts.set(s, stateCounts.get(s)+1)
             })
@@ -388,8 +391,8 @@ function run(){
     }
 }
 // call getCSV when the page loads
-//document.addEventListener('DOMContentLoaded', run());
-document.addEventListener('DOMContentLoaded', getTerritoryNames());
+document.addEventListener('DOMContentLoaded', run());
+//document.addEventListener('DOMContentLoaded', getTerritoryNames());
 
 //document.addEventListener('DOMContentLoaded', getCSV());
 
