@@ -97,11 +97,6 @@ function loadStateGeoJSON(state, map) {
     // }
     return new Promise((resolve , reject) => {
         $.getJSON(file, function(data) {
-            //console.log(data)
-            //checkPointInState(data, [42.3591895, -71.0931647])
-            // we need to reverse the latitude and longitude positions
-            //checkPointInState(data, [-72.9279911, 41.3119])
-            //checkPointInState([41.3119, -72.9279911], data)
             L.geoJSON(data, {
                 style: geoLineStyle(data, 100),
                 onEachFeature: eachFeatureStyle
@@ -112,7 +107,6 @@ function loadStateGeoJSON(state, map) {
             reject(new Error(`fail to load geoJSON for ${state}`))
         })
     })
-
 }
 
 function geoLineStyle(feature, color){
@@ -197,39 +191,6 @@ function checkPointInState(coords, stateGeoJSON){
     return false
 }
 
-
-
-
-// function isPointInState(state, point) {
-//     const pointFeature = turf.point(point); // Create a Turf.js point feature
-
-//     // Check if the state's geometry type is MultiPolygon
-//     if (state.geometry.type === 'MultiPolygon') {
-//         for (const polygon of state.geometry.coordinates) {
-//             const stateGeo = turf.multiPolygon([polygon]); // Create Turf.js MultiPolygon
-//             if (turf.booleanPointInPolygon(pointFeature, stateGeo)) {
-//                 console.log(state.properties.name)
-//                 return state.properties.name; // Return the state name if the point is inside
-//             }
-//         }
-//     } else if (state.geometry.type === 'Polygon') {
-//         const stateGeo = turf.polygon(state.geometry.coordinates); // Create Turf.js Polygon
-//         if (turf.booleanPointInPolygon(pointFeature, stateGeo)) {
-//             console.log(state.properties.name)
-//             return state.properties.name; // Return the state name if the point is inside
-//         }
-//     }
-//     console.log('no')
-
-//     return null; // Return null if the point is not in any part of the state
-// }
-
-
-
-
-
-
-
 function getStateFromPoint(coord, geoJSONMappings){
 
 
@@ -289,6 +250,12 @@ function addAddressToMap(data, map){
     }
 }
 
+function colorTerritory(stateGeoJSON, map, count){
+    L.geoJSON(stateGeoJSON, {
+        style: geoLineStyle(stateGeoJSON, count),
+        onEachFeature: eachFeatureStyle
+    }).addTo(map)
+}
 
 
 // displays CSV data; should we use plotting here?
@@ -380,6 +347,7 @@ async function run(){
             console.log(stateCounts)
             var sum = 0
             states.forEach(state => {
+                colorTerritory(geoJSONMappings.get(state), map, stateCounts.get(state))
                 sum += stateCounts.get(state)
             })
             console.log(sum)
