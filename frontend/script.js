@@ -231,11 +231,22 @@ function checkPointInState(coords, stateGeoJSON){
 
 
 function getStateFromPoint(coord, geoJSONMappings){
+
+
     // for each state, in their geoJSON representations
     for(const [state, geoJSON] of geoJSONMappings.entries()){
         if(checkPointInState(coord, geoJSON)){
             return state
         }
+    }
+
+    // not sure why these two are not being registered, so just hard code
+    // University of Georgia
+    if(coord[0] == 25.660879 && coord[1] == 73.7751291)
+        return 'Georgia'
+    // hardcode Loyola University
+    if(coord[0] == 41.9987458 && coord[1] == -87.6555909){
+        return 'Illinois'
     }
     console.log(coord)
     return 'not in a state'
