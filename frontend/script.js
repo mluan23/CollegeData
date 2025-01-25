@@ -1,8 +1,132 @@
 //import '../node_modules/leaflet-boundary-canvas'
 // washington dc not a state but good enough
 var states = []
+// const stateAbbreviations = new Map([
+//     ["Alabama", "AL"],
+//     ["Alaska", "AK"],
+//     ["Arizona", "AZ"],
+//     ["Arkansas", "AR"],
+//     ["California", "CA"],
+//     ["Colorado", "CO"],
+//     ["Connecticut", "CT"],
+//     ["Delaware", "DE"],
+//     ["District of Columbia", "DC"],
+//     ["Florida", "FL"],
+//     ["Georgia", "GA"],
+//     ["Hawaii", "HI"],
+//     ["Idaho", "ID"],
+//     ["Illinois", "IL"],
+//     ["Indiana", "IN"],
+//     ["Iowa", "IA"],
+//     ["Kansas", "KS"],
+//     ["Kentucky", "KY"],
+//     ["Louisiana", "LA"],
+//     ["Maine", "ME"],
+//     ["Maryland", "MD"],
+//     ["Massachusetts", "MA"],
+//     ["Michigan", "MI"],
+//     ["Minnesota", "MN"],
+//     ["Mississippi", "MS"],
+//     ["Missouri", "MO"],
+//     ["Montana", "MT"],
+//     ["Nebraska", "NE"],
+//     ["Nevada", "NV"],
+//     ["New Hampshire", "NH"],
+//     ["New Jersey", "NJ"],
+//     ["New Mexico", "NM"],
+//     ["New York", "NY"],
+//     ["North Carolina", "NC"],
+//     ["North Dakota", "ND"],
+//     ["Ohio", "OH"],
+//     ["Oklahoma", "OK"],
+//     ["Oregon", "OR"],
+//     ["Pennsylvania", "PA"],
+//     ["Rhode Island", "RI"],
+//     ["South Carolina", "SC"],
+//     ["South Dakota", "SD"],
+//     ["Tennessee", "TN"],
+//     ["Texas", "TX"],
+//     ["Utah", "UT"],
+//     ["Vermont", "VT"],
+//     ["Virginia", "VA"],
+//     ["Washington", "WA"],
+//     ["West Virginia", "WV"],
+//     ["Wisconsin", "WI"],
+//     ["Wyoming", "WY"],
+//     ["American Samoa", "AS"],
+//     ["Commonwealth of the Northern Mariana Islands", "MP"],
+//     ["Guam", "GU"],
+//     ["Puerto Rico", "PR"],
+//     ["United States Virgin Islands", "VI"]
+// ]);
+
+// console.log(stateAbbreviations);
+
+
+const abbreviationToState = new Map([
+    ["AL", "Alabama"],
+    ["AK", "Alaska"],
+    ["AZ", "Arizona"],
+    ["AR", "Arkansas"],
+    ["CA", "California"],
+    ["CO", "Colorado"],
+    ["CT", "Connecticut"],
+    ["DE", "Delaware"],
+    ["DC", "District of Columbia"],
+    ["FL", "Florida"],
+    ["GA", "Georgia"],
+    ["HI", "Hawaii"],
+    ["ID", "Idaho"],
+    ["IL", "Illinois"],
+    ["IN", "Indiana"],
+    ["IA", "Iowa"],
+    ["KS", "Kansas"],
+    ["KY", "Kentucky"],
+    ["LA", "Louisiana"],
+    ["ME", "Maine"],
+    ["MD", "Maryland"],
+    ["MA", "Massachusetts"],
+    ["MI", "Michigan"],
+    ["MN", "Minnesota"],
+    ["MS", "Mississippi"],
+    ["MO", "Missouri"],
+    ["MT", "Montana"],
+    ["NE", "Nebraska"],
+    ["NV", "Nevada"],
+    ["NH", "New Hampshire"],
+    ["NJ", "New Jersey"],
+    ["NM", "New Mexico"],
+    ["NY", "New York"],
+    ["NC", "North Carolina"],
+    ["ND", "North Dakota"],
+    ["OH", "Ohio"],
+    ["OK", "Oklahoma"],
+    ["OR", "Oregon"],
+    ["PA", "Pennsylvania"],
+    ["RI", "Rhode Island"],
+    ["SC", "South Carolina"],
+    ["SD", "South Dakota"],
+    ["TN", "Tennessee"],
+    ["TX", "Texas"],
+    ["UT", "Utah"],
+    ["VT", "Vermont"],
+    ["VA", "Virginia"],
+    ["WA", "Washington"],
+    ["WV", "West Virginia"],
+    ["WI", "Wisconsin"],
+    ["WY", "Wyoming"],
+    ["AS", "American Samoa"],
+    ["MP", "Commonwealth of the Northern Mariana Islands"],
+    ["GU", "Guam"],
+    ["PR", "Puerto Rico"],
+    ["VI", "United States Virgin Islands"]
+]);
+
+console.log(abbreviationToState);
+
+
 //var states = ['alabama','alaska','arizona','arkansas','california','colorado','connecticut','delaware','florida','georgia','hawaii','idaho','illinois','indiana','iowa','kansas','kentucky','louisiana','maine','maryland','massachusetts','michigan','minnesota','mississippi','missouri','montana','nebraska','nevada','new hampshire','new jersey','new mexico','new york','north carolina','north dakota','ohio','oklahoma','oregon','pennsylvania','rhode island','south carolina','south dakota','tennessee','texas','utah','vermont','virginia','washington','west virginia','wisconsin','wyoming']
-// retrieves the CSV
+// retrieves the CSV data, and parses it
 async function getCSVData(){
     try {
         var response = await fetch('../data/college.csv');
@@ -97,10 +221,6 @@ function loadStateGeoJSON(state, map) {
     // }
     return new Promise((resolve , reject) => {
         $.getJSON(file, function(data) {
-            L.geoJSON(data, {
-                style: geoLineStyle(data, 100),
-                onEachFeature: eachFeatureStyle
-            }).addTo(map);
             resolve(data)
         }).fail(function(){
             console.log('failure')
@@ -145,8 +265,9 @@ function highlightFeature(e) {
 // Function to reset highlight on mouseout
 function resetHighlight(e) {
     var layer = e.target
+    var style = layer.options.fillColor
     layer.setStyle({
-        fillColor: 'white',
+        fillColor: style,
         weight: 1,
         opacity: 1,
         color: 'blue',
@@ -191,6 +312,11 @@ function checkPointInState(coords, stateGeoJSON){
     return false
 }
 
+function getStateFromLocation(location){
+    const loc = location.split(', ')
+    return abbreviationToState.get(loc[1])
+}
+
 function getStateFromPoint(coord, geoJSONMappings){
 
 
@@ -205,7 +331,7 @@ function getStateFromPoint(coord, geoJSONMappings){
     // University of Georgia
     if(coord[0] == 25.660879 && coord[1] == 73.7751291)
         return 'Georgia'
-    // hardcode Loyola University
+    // Loyola University
     if(coord[0] == 41.9987458 && coord[1] == -87.6555909){
         return 'Illinois'
     }
@@ -213,42 +339,43 @@ function getStateFromPoint(coord, geoJSONMappings){
     return 'not in a state'
 }
 
-function getCounts(data, map, colName, state){ 
-   // var count
+// get the counts for a specific state
+function getCounts(data, colName, state){ 
+    var count
     data.forEach(row => {
         // the coord is a string, with 
-        const coords = JSON.parse(row['coordinates']); 
+        const coords = JSON.parse(row[`${colName}`]); 
         const location = [coords[0], coords[1]];
-        const name = row.rank
+        //const name = row.rank
         //console.log(name)
         // Ensure the coordinates are valid numbers
-        if (!isNaN(location[0]) && !isNaN(location[1])) {
-            //console.log(location[0] + ', ' + location[1]);
-            // L.marker(location).addTo(map);
-        } else {
-            console.error('Invalid coordinates:', coords);
-        }
+        // if (!isNaN(location[0]) && !isNaN(location[1])) {
+        //     //console.log(location[0] + ', ' + location[1]);
+        //     // L.marker(location).addTo(map);
+        // } else {
+        //     console.error('Invalid coordinates:', coords);
+        // }
     });
-   // return count
+    return count
 }
 
 
-function addAddressToMap(data, map){
-    var lines = data.split('\n')
-    var headers = lines[0].split(',')
-    var coordIndex = headers.indexOf('coordinates')
-    if(coordIndex == -1){
-        coordIndex = headers.indexOf('coordinates\r')
-    }
-    for(var i = 1; i < lines.length; i++){
-        var l = lines[i].split(',')
-        var coord = l[coordIndex]
-        //console.log(headers)
-        console.log(lines[i])
-        //location = [l[0], l[1]]
-        L.marker(location).addTo(map)
-    }
-}
+// function addAddressToMap(data, map){
+//     var lines = data.split('\n')
+//     var headers = lines[0].split(',')
+//     var coordIndex = headers.indexOf('coordinates')
+//     if(coordIndex == -1){
+//         coordIndex = headers.indexOf('coordinates\r')
+//     }
+//     for(var i = 1; i < lines.length; i++){
+//         var l = lines[i].split(',')
+//         var coord = l[coordIndex]
+//         //console.log(headers)
+//         console.log(lines[i])
+//         //location = [l[0], l[1]]
+//         L.marker(location).addTo(map)
+//     }
+// }
 
 function colorTerritory(stateGeoJSON, map, count){
     L.geoJSON(stateGeoJSON, {
@@ -302,10 +429,38 @@ function getColor(count){
            'white';
 }
 
+// count num colleges from lower to upper bound
+function countNumCollegesPerState(numCollegesByState, data, lBound, uBound, geoJSONMappings){
+    //lBound -= 1 // just so we can index by 1
+    data.forEach((row, index) => {
+        if(index >= lBound && index <= uBound){
+            var coords = JSON.parse(row['coordinates'])
+            var s = getStateFromPoint(coords, geoJSONMappings)
+            numCollegesByState.set(s, numCollegesByState.get(s)+1)
+        }
+    })
+    return numCollegesByState
+}
+
+function getEarnings(earningsByState, data, lBound, uBound, numCollegesByState){
+    data.forEach((row, index) => {
+        if(index >= lBound && index <= uBound){
+            var earnings = JSON.parse(row['median earnings'])
+            var s = row['location']
+            var state = getStateFromLocation(s)
+            if(state == undefined)
+                console.log(s)
+            earningsByState.set(state, earningsByState.get(state) + earnings)
+        }
+    })
+    return earningsByState
+}
+
 async function run(){
     await getTerritoryNames()
     var geoJSONMappings = new Map()
-    var stateCounts = new Map()
+    var numCollegesByState = new Map()
+    var earningsByState = new Map()
     var promises = []
     //const states = ['alabama','alaska','arizona','arkansas','california','colorado','connecticut','delaware','florida','georgia','hawaii','idaho','illinois','indiana','iowa','kansas','kentucky','louisiana','maine','maryland','massachusetts','michigan','minnesota','mississippi','missouri','montana','nebraska','nevada','new hampshire','new jersey','new mexico','new york','north carolina','north dakota','ohio','oklahoma','oregon','pennsylvania','rhode island','south carolina','south dakota','tennessee','texas','utah','vermont','virginia','washington','west virginia','wisconsin','wyoming']
     try{
@@ -314,56 +469,25 @@ async function run(){
             //getCounts(data, map, 'coordinates')
             states.forEach(state => {
                 const promise = loadStateGeoJSON(state, map).then(geoJSON => {
-                    //if(state == 'washington')
-                      //  console.log(checkPointInState([38.9076789, -77.0716024], geoJSON))
-                    //const coords = JSON.parse(row['coordinates']);
-                    //console.log(geoJSON)
-                   // console.log(geoJSON)
                     geoJSONMappings.set(state, geoJSON)
-                    //console.log(geoJSONMappings)
-                    stateCounts.set(state,0)
-                    //console.log(geoJSONMappings)
-                    //[33.4218938, -111.9400681]         
-                    //console.log(getStateFromPoint([-71.0931647, 42.3591895], geoJSONMappings))
+                    numCollegesByState.set(state,0)
+                    earningsByState.set(state,0)
                 })
                 promises.push(promise)
-                //console.log(geoJSONMappings)
             })
             await Promise.all(promises)
-            // states.forEach(state => {
-            //      console.log(getStateFromPoint([38.9076789, -77.0716024], geoJSONMappings))
-            // })
 
             // we need to wait for all promises to be resolved before we can attempt to get the stuff
-            data.forEach(row => {
-                const coords = JSON.parse(row['coordinates'])
-                coords[0] = coords[0]
-                coords[1] = coords[1]
-                //console.log(geoJSONMappings)
-                //console.log(states)
-                var s = getStateFromPoint(coords, geoJSONMappings)
-                stateCounts.set(s, stateCounts.get(s)+1)
-            })
-            console.log(stateCounts)
+            numCollegesByState = countNumCollegesPerState(numCollegesByState, data, 0, 1200, geoJSONMappings)
+            console.log(numCollegesByState)
             var sum = 0
             states.forEach(state => {
-                colorTerritory(geoJSONMappings.get(state), map, stateCounts.get(state))
-                sum += stateCounts.get(state)
+                colorTerritory(geoJSONMappings.get(state), map, numCollegesByState.get(state))
+                sum += numCollegesByState.get(state)
             })
             console.log(sum)
-            //console.log(geoJSONMappings)
-            //console.log(te)
-            // initMap().then(map => {
-            //     getCounts(data, map, 'coordinates')
-            // //    loadStateGeoJSON(states[0], map)
-            // //    loadStateGeoJSON('new york', map)
-            //     states.forEach(state => {
-            //         loadStateGeoJSON(state, map)
-            //     })
-
-            //})
-           // console.log('test')
-            //console.log(data)
+            earningsByState = getEarnings(earningsByState, data, 0, 1800, numCollegesByState)
+            console.log(earningsByState)
         })
     } catch(error){
         console.log(error)
