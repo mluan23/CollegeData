@@ -20,6 +20,14 @@
 <body>
     <div class="container">
         <h1>College Data Display</h1>
+        <button>test</button>
+        <label for="category">Choose a category to display:</label>
+            <select name="category" id="category" onchange="getDisplayCategory()">
+                <option value="Median">Median Earnings</option>
+                <option value="Graduation">Graduation Rate</option>
+                <option value="Employed">Employed Two Years After Graduation</option>
+                <option value="Acceptance">Acceptance Rate</option>
+            </select>
         <div id="map" style="height: 500px; width: 100%;"></div>
 
         <table id="csvTable">
@@ -29,6 +37,6 @@
             <tbody id="tableBody"></tbody>
         </table>
     </div>
-    <script type="module" src="script.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>

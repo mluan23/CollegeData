@@ -1,67 +1,6 @@
-//import '../node_modules/leaflet-boundary-canvas'
-// washington dc not a state but good enough
 var states = []
-// const stateAbbreviations = new Map([
-//     ["Alabama", "AL"],
-//     ["Alaska", "AK"],
-//     ["Arizona", "AZ"],
-//     ["Arkansas", "AR"],
-//     ["California", "CA"],
-//     ["Colorado", "CO"],
-//     ["Connecticut", "CT"],
-//     ["Delaware", "DE"],
-//     ["District of Columbia", "DC"],
-//     ["Florida", "FL"],
-//     ["Georgia", "GA"],
-//     ["Hawaii", "HI"],
-//     ["Idaho", "ID"],
-//     ["Illinois", "IL"],
-//     ["Indiana", "IN"],
-//     ["Iowa", "IA"],
-//     ["Kansas", "KS"],
-//     ["Kentucky", "KY"],
-//     ["Louisiana", "LA"],
-//     ["Maine", "ME"],
-//     ["Maryland", "MD"],
-//     ["Massachusetts", "MA"],
-//     ["Michigan", "MI"],
-//     ["Minnesota", "MN"],
-//     ["Mississippi", "MS"],
-//     ["Missouri", "MO"],
-//     ["Montana", "MT"],
-//     ["Nebraska", "NE"],
-//     ["Nevada", "NV"],
-//     ["New Hampshire", "NH"],
-//     ["New Jersey", "NJ"],
-//     ["New Mexico", "NM"],
-//     ["New York", "NY"],
-//     ["North Carolina", "NC"],
-//     ["North Dakota", "ND"],
-//     ["Ohio", "OH"],
-//     ["Oklahoma", "OK"],
-//     ["Oregon", "OR"],
-//     ["Pennsylvania", "PA"],
-//     ["Rhode Island", "RI"],
-//     ["South Carolina", "SC"],
-//     ["South Dakota", "SD"],
-//     ["Tennessee", "TN"],
-//     ["Texas", "TX"],
-//     ["Utah", "UT"],
-//     ["Vermont", "VT"],
-//     ["Virginia", "VA"],
-//     ["Washington", "WA"],
-//     ["West Virginia", "WV"],
-//     ["Wisconsin", "WI"],
-//     ["Wyoming", "WY"],
-//     ["American Samoa", "AS"],
-//     ["Commonwealth of the Northern Mariana Islands", "MP"],
-//     ["Guam", "GU"],
-//     ["Puerto Rico", "PR"],
-//     ["United States Virgin Islands", "VI"]
-// ]);
-
-// console.log(stateAbbreviations);
-
+var map
+var stateLayers = []
 
 const abbreviationToState = new Map([
     ["AL", "Alabama"],
@@ -122,9 +61,6 @@ const abbreviationToState = new Map([
     ["VI", "United States Virgin Islands"]
 ]);
 
-console.log(abbreviationToState);
-
-
 //var states = ['alabama','alaska','arizona','arkansas','california','colorado','connecticut','delaware','florida','georgia','hawaii','idaho','illinois','indiana','iowa','kansas','kentucky','louisiana','maine','maryland','massachusetts','michigan','minnesota','mississippi','missouri','montana','nebraska','nevada','new hampshire','new jersey','new mexico','new york','north carolina','north dakota','ohio','oklahoma','oregon','pennsylvania','rhode island','south carolina','south dakota','tennessee','texas','utah','vermont','virginia','washington','west virginia','wisconsin','wyoming']
 // retrieves the CSV data, and parses it
 async function getCSVData(){
@@ -144,6 +80,7 @@ async function getCSVData(){
         Papa.parse(data, {
             header: true,
             complete: function(results) {
+                console.log(results.meta.fields)
                 // for some reason, the last data entry is just an empty name
                 var r = results.data.slice(0,results.data.length-1)
                 //console.log("Parsed Data:", r);
@@ -155,6 +92,11 @@ async function getCSVData(){
             }
         });
     });
+}
+
+function getDisplayCategory(){
+    var category = document.getElementById('category')
+    console.log(category.value)
 }
 
 async function getTerritoryNames(){
@@ -183,25 +125,6 @@ $.getJSON('https://cdn.rawgit.com/johan/world.geo.json/34c96bba/countries/USA.ge
   map.fitBounds(usLayer.getBounds());
 });
 return map
-//const dataPromise = await getCSV();
-//addAddressToMap(dataPromise, map)
-
-// Add a tile layer to the map
-// L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-//     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-// }).addTo(map);
-
-// var locations = [
-//     [40.7128, -74.0060], // NY
-//     [34.0522, -118.2437] // LA
-// ]
-// locations.forEach(location => {
-//     L.marker(location).addTo(map)
-// })
-
-// var bounds = new L.latLngBounds(locations)
-// map.fitBounds(bounds)
-
 // Add a marker at the location
 // const marker = L.marker([40.7128, -74.0060]).addTo(map)
 //     .bindPopup('<a href="https://www.openstreetmap.org/search?query=40.7128,-74.0060" target="_blank">View Address</a>')
@@ -214,7 +137,7 @@ return map
 // }
 
 // Function to load state GeoJSON data
-function loadStateGeoJSON(state, map) {
+function loadStateGeoJSON(state) {
     var file = `../data/territories_geo_json/${state}.geojson`;
     // if(state == 'washington dc'){
     // const file = `https://raw.githubusercontent.com/glynnbird/usstatesgeojson/master/${state}.geojson`;
@@ -280,12 +203,6 @@ function zoomToFeature(e) {
     map.fitBounds(e.target.getBounds());
 }
 
-
-
-
-function plotOnMap(map){
-    
-}
 
 function checkPointInState(coords, stateGeoJSON){
     // since we need to reverse lat and long
@@ -377,11 +294,27 @@ function getCounts(data, colName, state){
 //     }
 // }
 
-function colorTerritory(stateGeoJSON, map, count){
-    L.geoJSON(stateGeoJSON, {
+function removeStateLayers(){
+    stateLayers.forEach(layer => {
+        map.removeLayer(layer)  
+    })
+    stateLayers = []
+}
+
+function colorTerritory(stateGeoJSON, count){
+    stateLayers.push(L.geoJSON(stateGeoJSON, {
         style: geoLineStyle(stateGeoJSON, count),
         onEachFeature: eachFeatureStyle
-    }).addTo(map)
+    }).addTo(map))
+}
+
+function colorMap(geoJSONMappings, counts){
+    //console.log('coloring')
+    //console.log(geoJSONMappings)
+    console.log(counts)
+    for(const [state, stateGeoJSON] of geoJSONMappings.entries()){
+        colorTerritory(stateGeoJSON, counts.get(state))
+    }
 }
 
 
@@ -421,12 +354,21 @@ function displayData(data){
 }
 
 function getColor(count){
-    return count > 100 ? 'red':
-           count > 50 ? 'orange':
+    return count > 100 ? '#006400':
+           count > 50 ? '#bef16e':
            count > 25 ? 'yellow':
-           count > 10 ? 'blue':
-           count > 0 ? 'black':
-           'white';
+           count > 10 ? 'orange':
+           count > 0 ? 'red':
+           'black';
+}
+
+function getColorByPercentages(count){
+    return count > 80 ? '#006400':
+           count > 60 ? '#bef16e':
+           count > 40 ? 'yellow':
+           count > 20 ? 'orange':
+           count >= 0 ? 'red':
+           'black';
 }
 
 // count num colleges from lower to upper bound
@@ -456,38 +398,73 @@ function getEarnings(earningsByState, data, lBound, uBound, numCollegesByState){
     return earningsByState
 }
 
+function getPercentages(percentages, data, lBound, uBound, colName, numCollegesByState){
+    data.forEach((row, index) => {
+        if(index >= lBound && index <= uBound){
+            var percent = parseFloat(row[`${colName}`])
+            //console.log(percent)
+            var s = row['location']
+            var state = getStateFromLocation(s)
+            percentages.set(state, percentages.get(state) + percent)
+        }
+    })
+    for(const [state, percent] of percentages.entries()){
+        percentages.set(state, percentages.get(state) / numCollegesByState.get(state))
+    }
+    return percentages
+}
+
+
 async function run(){
     await getTerritoryNames()
     var geoJSONMappings = new Map()
     var numCollegesByState = new Map()
     var earningsByState = new Map()
+    var percentagesByGrad = new Map()
+    var percentagesByAccept = new Map()
+    var percentagesByEmployed = new Map()
+    var percentPell = new Map()
+    var percentAthletes = new Map()
     var promises = []
     //const states = ['alabama','alaska','arizona','arkansas','california','colorado','connecticut','delaware','florida','georgia','hawaii','idaho','illinois','indiana','iowa','kansas','kentucky','louisiana','maine','maryland','massachusetts','michigan','minnesota','mississippi','missouri','montana','nebraska','nevada','new hampshire','new jersey','new mexico','new york','north carolina','north dakota','ohio','oklahoma','oregon','pennsylvania','rhode island','south carolina','south dakota','tennessee','texas','utah','vermont','virginia','washington','west virginia','wisconsin','wyoming']
     try{
         getCSVData().then(async data => {
-            var map = initMap()
+            map = initMap()
             //getCounts(data, map, 'coordinates')
             states.forEach(state => {
-                const promise = loadStateGeoJSON(state, map).then(geoJSON => {
+                const promise = loadStateGeoJSON(state).then(geoJSON => {
                     geoJSONMappings.set(state, geoJSON)
                     numCollegesByState.set(state,0)
                     earningsByState.set(state,0)
+                    percentagesByGrad.set(state,0)
+                    percentagesByAccept.set(state,0)
+                    percentagesByEmployed.set(state,0)
                 })
                 promises.push(promise)
             })
             await Promise.all(promises)
 
             // we need to wait for all promises to be resolved before we can attempt to get the stuff
-            numCollegesByState = countNumCollegesPerState(numCollegesByState, data, 0, 1200, geoJSONMappings)
+            numCollegesByState = countNumCollegesPerState(numCollegesByState, data, 0, 1800, geoJSONMappings)
             console.log(numCollegesByState)
             var sum = 0
             states.forEach(state => {
-                colorTerritory(geoJSONMappings.get(state), map, numCollegesByState.get(state))
+                //colorTerritory(geoJSONMappings.get(state), numCollegesByState.get(state))
                 sum += numCollegesByState.get(state)
             })
-            console.log(sum)
+            //colorMap(geoJSONMappings, numCollegesByState)
+           // console.log(sum)
             earningsByState = getEarnings(earningsByState, data, 0, 1800, numCollegesByState)
-            console.log(earningsByState)
+            //console.log(earningsByState)
+            percentagesByGrad = getPercentages(percentagesByGrad, data, 0, 1000, 'graduation rate', numCollegesByState)
+            //console.log(percentages)
+            //colorMap(geoJSONMappings, earningsByState)
+            //colorMap(geoJSONMappings, percentagesByGrad)
+           // percentagesByAccept = getPercentages(percentagesByAccept, data, 0, 1800, 'acceptance rate', numCollegesByState)
+            colorMap(geoJSONMappings, percentagesByGrad)
+            removeStateLayers()
+            colorMap(geoJSONMappings, numCollegesByState)
+
         })
     } catch(error){
         console.log(error)
