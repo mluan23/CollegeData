@@ -309,8 +309,6 @@ function colorTerritory(stateGeoJSON, count){
 }
 
 function colorMap(geoJSONMappings, counts){
-    //console.log('coloring')
-    //console.log(geoJSONMappings)
     console.log(counts)
     for(const [state, stateGeoJSON] of geoJSONMappings.entries()){
         colorTerritory(stateGeoJSON, counts.get(state))
@@ -371,7 +369,7 @@ function getColorByPercentages(count){
            'black';
 }
 
-// count num colleges from lower to upper bound
+// count num colleges from lower to upper bound, also color
 function countNumCollegesPerState(numCollegesByState, data, lBound, uBound, geoJSONMappings){
     //lBound -= 1 // just so we can index by 1
     data.forEach((row, index) => {
@@ -384,17 +382,123 @@ function countNumCollegesPerState(numCollegesByState, data, lBound, uBound, geoJ
     return numCollegesByState
 }
 
+function getTuitions(inState, outState, overall, data, lBound, uBound, numCollegesByState){
+    data.forEach((row, index) => {
+        if(index >= lBound && index <= uBound){
+            var instate = parseInt(row['in-state tuition'])
+            var outstate = parseInt(row['out-of-state tuition'])
+            var s = row['location']
+            var state = getStateFromLocation(s)
+            if(state == undefined){
+                console.log(s)
+                return
+            }
+            inState.set(state, inState.get(state) + instate)
+            outState.set(state, outState.get(state) + outstate)
+            overall.set(state, overall.get(state), instate + outstate)
+        }
+    })
+    //inState = getAverage(inState, numCollegesByState)
+    //outState = getAverage(outState, numCollegesByState)
+    //overall = getAverage(overall, numCollegesByState)
+    return [inState, outState, overall]
+}
+
+function getNetCost(netCosts, data, lBound, uBound, numCollegesByState){
+    data.forEach((row, index) => {
+        if(index >= lBound && index <= uBound){
+            var cost = parseInt(row['net cost'])
+            var s = row['location']
+            var state = getStateFromLocation(s)
+            if(state == undefined){
+                console.log(s)
+                return
+            }
+            netCosts.set(state, netCosts.get(state) + cost)
+        }
+    })
+    //netCosts = getAverage(netCosts, numCollegesByState)
+    return netCosts
+}
+
+function getCostByIncome(costByIncome, colName, data, lBound, uBound, numCollegesByState){
+    data.forEach((row, index) => {
+        if(index >= lBound && index <= uBound){
+            var cost = parseInt(row[`${colName}`])
+            // -1 means it was unlisted
+            if(cost == -1){ 
+                return
+            }
+            var s = row['location']
+            var state = getStateFromLocation(s)
+
+            if(state == undefined){
+                console.log(s)
+                return
+            }
+            costByIncome.set(state, netCosts.get(state) + cost)
+        }
+    })
+    //costByIncome = getAverage(costByIncome, numCollegesByState)
+    return costByIncome
+}
+
+function getAid(aid, data, lBound, uBound, numCollegesByState){
+    data.forEach((row, index) => {
+        if(index >= lBound && index <= uBound){
+            var a = parseInt(row['aid'])
+            var s = row['location']
+            var state = getStateFromLocation(s)
+            if(state == undefined){
+                console.log(s)
+                return
+            }
+
+            aid.set(state, aid.get(state) + a)
+        }
+    })
+    //aid = getAverage(aid, numCollegesByState)
+    return aid
+}
+
 function getEarnings(earningsByState, data, lBound, uBound, numCollegesByState){
     data.forEach((row, index) => {
         if(index >= lBound && index <= uBound){
-            var earnings = JSON.parse(row['median earnings'])
+            var earnings = parseInt(row['median earnings'])
             var s = row['location']
             var state = getStateFromLocation(s)
-            if(state == undefined)
+            if(state == undefined){
                 console.log(s)
+                return
+            }
+
             earningsByState.set(state, earningsByState.get(state) + earnings)
         }
     })
+    //earningsByState = getAverage(earningsByState, numCollegesByState)
+    return earningsByState
+}
+
+function getNumMajor(majorByState, majorName, data, lBound, uBound, colName){
+    data.forEach((row, index) => {
+        if(index >= lBound && index <= uBound){
+            var majors = JSON.parse(row[majors])
+            var majorsMap = new Map(Object.entries(majors));
+            var s = row['location']
+            var state = getStateFromLocation(s)
+            if(state == undefined){
+                console.log(s)
+                return
+            }
+            count = majorsMap.get(majorName)
+            if(count == undefined){
+                return
+            }
+
+            majorByState.set(state, majorByState.get(state) + count)
+        }
+    })
+    //earningsByState = getAverage(earningsByState, numCollegesByState)
     return earningsByState
 }
 
@@ -408,12 +512,36 @@ function getPercentages(percentages, data, lBound, uBound, colName, numCollegesB
             percentages.set(state, percentages.get(state) + percent)
         }
     })
-    for(const [state, percent] of percentages.entries()){
-        percentages.set(state, percentages.get(state) / numCollegesByState.get(state))
-    }
+    percentages = getAverage(percentages, numCollegesByState)
     return percentages
 }
 
+function getTotalUnderGrads(fullUndergrads, partUndergrads, totalUndergrads, data, lBound, uBound){
+    data.forEach((row, index) => {
+        if(index >= lBound && index <= uBound){
+            var fulltime = parseInt(row['full-time undergraduates'])
+            var partime = parseInt(row['part-time undergrads'])
+            var s = row['location']
+            var state = getStateFromLocation(s)
+            if(state == undefined){
+                console.log(s)
+                return
+            }
+            totalUndergrads.set(state, totalUndergrads.get(state) + fulltime + partime)
+            fullUndergrads.set(state, fullUndergrads.get(state) + fulltime)
+            partUndergrads.set(state, partUndergrads.get(state) + partime)
+        }
+    })
+    return [totalUndergrads, fullUndergrads, partUndergrads]
+}
+
+
+function getAverage(stateData, numCollegesByState){
+    for(const [state, x] of stateData.entries()){
+        stateData.set(state, stateData.get(state) / numCollegesByState.get(state))
+    }
+    return stateData
+}
 
 async function run(){
     await getTerritoryNames()
@@ -439,31 +567,35 @@ async function run(){
                     percentagesByGrad.set(state,0)
                     percentagesByAccept.set(state,0)
                     percentagesByEmployed.set(state,0)
+                    percentAthletes.set(state,0)
                 })
                 promises.push(promise)
             })
             await Promise.all(promises)
 
             // we need to wait for all promises to be resolved before we can attempt to get the stuff
-            numCollegesByState = countNumCollegesPerState(numCollegesByState, data, 0, 1800, geoJSONMappings)
-            console.log(numCollegesByState)
-            var sum = 0
-            states.forEach(state => {
-                //colorTerritory(geoJSONMappings.get(state), numCollegesByState.get(state))
-                sum += numCollegesByState.get(state)
-            })
+            // numCollegesByState = countNumCollegesPerState(numCollegesByState, data, 0, 1800, geoJSONMappings)
+            // console.log(numCollegesByState)
+            // var sum = 0
+            // states.forEach(state => {
+            //     //colorTerritory(geoJSONMappings.get(state), numCollegesByState.get(state))
+            //     sum += numCollegesByState.get(state)
+            // })
+            countNumCollegesPerState(numCollegesByState, data, 0, 1800, geoJSONMappings)
+            getEarnings(earningsByState, data, 0, 1800, numCollegesByState, geoJSONMappings)
+            getTotalUnderGrads(percentAthletes, data, 0, 1800, geoJSONMappings)
             //colorMap(geoJSONMappings, numCollegesByState)
            // console.log(sum)
-            earningsByState = getEarnings(earningsByState, data, 0, 1800, numCollegesByState)
+           //earningsByState = getEarnings(earningsByState, data, 0, 1800, numCollegesByState)
             //console.log(earningsByState)
-            percentagesByGrad = getPercentages(percentagesByGrad, data, 0, 1000, 'graduation rate', numCollegesByState)
+        //percentagesByGrad = getPercentages(percentagesByGrad, data, 0, 1000, 'graduation rate', numCollegesByState)
             //console.log(percentages)
             //colorMap(geoJSONMappings, earningsByState)
             //colorMap(geoJSONMappings, percentagesByGrad)
            // percentagesByAccept = getPercentages(percentagesByAccept, data, 0, 1800, 'acceptance rate', numCollegesByState)
-            colorMap(geoJSONMappings, percentagesByGrad)
-            removeStateLayers()
-            colorMap(geoJSONMappings, numCollegesByState)
+            // colorMap(geoJSONMappings, percentagesByGrad)
+            // removeStateLayers()
+            // colorMap(geoJSONMappings, numCollegesByState)
 
         })
     } catch(error){

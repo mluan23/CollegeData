@@ -17,24 +17,23 @@ def replace_incorrect_characters(text):
 def remove_em_dash(row):
     df = pd.read_csv(filename, encoding='Latin1')
     #print(df.loc[[381], 'name'])
-    # replace the em dash, definitely is a better way to do this...
+    # replace the em dash, probably is a better way to do this
     df[row] = df[row].str.replace('Ã¢â¬â', ' - ')
     #df.drop_duplicates(subset=[row])
     df.to_csv(filename, index=False, encoding='Latin1')
 
+def separate_income_prices(row):
+    incomes = eval(row['prices-by-income'])
+    for key, value in incomes.items():
+        row[key] = value
+    return row
+
 def main():
-
-    # # Sample DataFrame
-    # data = {'text': ['This is a sample text with an em—dash and an en–dash.']}
-    # df = pd.DataFrame(data)
-    # print(df)
-    #
-    # # Replace em and en dashes with a space and a hyphen
-    # df['text'] = df['text'].str.replace('—', ' - ').str.replace('–', ' - ')
-    #
-    # print(df)
-
-    remove_em_dash('name')
+    df = pd.read_csv(filename, encoding='Latin1')
+    df = df.apply(separate_income_prices, axis=1)
+    df = df.drop(columns=['prices-by-income'])
+    df.to_csv(filename, index=False)
+  #  remove_em_dash('name')
 
 if __name__ == '__main__':
     main()
