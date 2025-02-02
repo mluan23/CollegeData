@@ -1,6 +1,8 @@
 var states = []
 var map
 var stateLayers = []
+var allMajors = []
+
 
 const abbreviationToState = new Map([
     ["AL", "Alabama"],
@@ -95,8 +97,67 @@ async function getCSVData(){
 }
 
 function getDisplayCategory(){
+    clearMultiSelect()
     var category = document.getElementById('category')
+    switch (category.value){
+        case "Nums":
+            getNumCollegesPerState
+        case "Median":
+            getEarnings
+            break
+        case "Graduation":
+            getPercentages
+            break
+        case "Employed":
+            getPercentages
+            break
+        case "Acceptance":
+            getPercentages
+            break
+        case "Pell":
+            getPercentages
+            break
+        case "Athletes":
+            getPercentages
+            break
+        case "Net":
+            getNetCost
+            var options = ["<30k", "30-48k", "49-75k", "76-110k", "110k+"]
+            addOptions(options)
+            break
+            // then we will add the option
+        case "Tuition":
+            getTuitions
+            var options = ["In-State", "Out-of-State"]
+            addOptions(options)
+            break
+        case "Undergrads":
+            getTotalUnderGrads
+            var options = ["Full-Time", "Part-Time"]
+            addOptions(options)
+            break
+
+        
+    }
+
     console.log(category.value)
+}
+
+function addOptions(options){
+    sel = document.getElementById("multiSelect")
+    sel.innerHTML = ''
+    options.forEach(option => {
+        var o = document.createElement("option")
+        o.value = option
+        o.textContent = option
+        sel.appendChild(o)
+    })
+    sel.style.display = 'inline'
+}
+
+function clearMultiSelect(){
+    s = document.getElementById("multiSelect")
+    s.style.display = 'none'
 }
 
 async function getTerritoryNames(){
@@ -368,9 +429,14 @@ function getColorByPercentages(count){
            count >= 0 ? 'red':
            'black';
 }
+// function getDisplayCategory(){
+//     category = document.getElementById('category')
+//     if(category == 'Median')
 
-// count num colleges from lower to upper bound, also color
-function countNumCollegesPerState(numCollegesByState, data, lBound, uBound, geoJSONMappings){
+// }
+
+// count num colleges from lower to upper bound
+function getNumCollegesPerState(numCollegesByState, data, lBound, uBound, geoJSONMappings){
     //lBound -= 1 // just so we can index by 1
     data.forEach((row, index) => {
         if(index >= lBound && index <= uBound){
@@ -382,7 +448,7 @@ function countNumCollegesPerState(numCollegesByState, data, lBound, uBound, geoJ
     return numCollegesByState
 }
 
-function getTuitions(inState, outState, overall, data, lBound, uBound, numCollegesByState){
+function getTuitions(inState, outState, overall, data, lBound, uBound){
     data.forEach((row, index) => {
         if(index >= lBound && index <= uBound){
             var instate = parseInt(row['in-state tuition'])
@@ -404,7 +470,7 @@ function getTuitions(inState, outState, overall, data, lBound, uBound, numColleg
     return [inState, outState, overall]
 }
 
-function getNetCost(netCosts, data, lBound, uBound, numCollegesByState){
+function getNetCost(netCosts, data, lBound, uBound){
     data.forEach((row, index) => {
         if(index >= lBound && index <= uBound){
             var cost = parseInt(row['net cost'])
@@ -421,7 +487,7 @@ function getNetCost(netCosts, data, lBound, uBound, numCollegesByState){
     return netCosts
 }
 
-function getCostByIncome(costByIncome, colName, data, lBound, uBound, numCollegesByState){
+function getCostByIncome(costByIncome, colName, data, lBound, uBound){
     data.forEach((row, index) => {
         if(index >= lBound && index <= uBound){
             var cost = parseInt(row[`${colName}`])
@@ -443,7 +509,7 @@ function getCostByIncome(costByIncome, colName, data, lBound, uBound, numCollege
     return costByIncome
 }
 
-function getAid(aid, data, lBound, uBound, numCollegesByState){
+function getAid(aid, data, lBound, uBound){
     data.forEach((row, index) => {
         if(index >= lBound && index <= uBound){
             var a = parseInt(row['aid'])
@@ -461,7 +527,7 @@ function getAid(aid, data, lBound, uBound, numCollegesByState){
     return aid
 }
 
-function getEarnings(earningsByState, data, lBound, uBound, numCollegesByState){
+function getEarnings(earningsByState, data, lBound, uBound){
     data.forEach((row, index) => {
         if(index >= lBound && index <= uBound){
             var earnings = parseInt(row['median earnings'])
@@ -479,7 +545,7 @@ function getEarnings(earningsByState, data, lBound, uBound, numCollegesByState){
     return earningsByState
 }
 
-function getNumMajor(majorByState, majorName, data, lBound, uBound, colName){
+function getNumMajor(majorByState, majorName, data, lBound, uBound){
     data.forEach((row, index) => {
         if(index >= lBound && index <= uBound){
             var majors = JSON.parse(row[majors])
@@ -499,7 +565,21 @@ function getNumMajor(majorByState, majorName, data, lBound, uBound, colName){
         }
     })
     //earningsByState = getAverage(earningsByState, numCollegesByState)
-    return earningsByState
+    return majorByState
+}
+
+function getAllMajors(data){
+    data.forEach((row, index) => {
+        if(index >= lBound && index <= uBound){
+            var majors = JSON.parse(row[majors])
+            var majorsMap = new Map(Object.entries(majors));
+            for(const [major, count] of majorsMap.entries()){
+                if (!allMajors.includes(major)){
+                    allMajors.push(major)
+                }
+            }
+        }
+    })
 }
 
 function getPercentages(percentages, data, lBound, uBound, colName, numCollegesByState){
@@ -581,21 +661,9 @@ async function run(){
             //     //colorTerritory(geoJSONMappings.get(state), numCollegesByState.get(state))
             //     sum += numCollegesByState.get(state)
             // })
-            countNumCollegesPerState(numCollegesByState, data, 0, 1800, geoJSONMappings)
-            getEarnings(earningsByState, data, 0, 1800, numCollegesByState, geoJSONMappings)
-            getTotalUnderGrads(percentAthletes, data, 0, 1800, geoJSONMappings)
-            //colorMap(geoJSONMappings, numCollegesByState)
-           // console.log(sum)
-           //earningsByState = getEarnings(earningsByState, data, 0, 1800, numCollegesByState)
-            //console.log(earningsByState)
-        //percentagesByGrad = getPercentages(percentagesByGrad, data, 0, 1000, 'graduation rate', numCollegesByState)
-            //console.log(percentages)
-            //colorMap(geoJSONMappings, earningsByState)
-            //colorMap(geoJSONMappings, percentagesByGrad)
-           // percentagesByAccept = getPercentages(percentagesByAccept, data, 0, 1800, 'acceptance rate', numCollegesByState)
-            // colorMap(geoJSONMappings, percentagesByGrad)
-            // removeStateLayers()
-            // colorMap(geoJSONMappings, numCollegesByState)
+            // countNumCollegesPerState(numCollegesByState, data, lBound, uBound, geoJSONMappings)
+            // getEarnings(earningsByState, data, lBound, uBound, numCollegesByState, geoJSONMappings)
+            // getTotalUnderGrads(percentAthletes, data, lBound, uBound, geoJSONMappings)
 
         })
     } catch(error){
@@ -603,8 +671,8 @@ async function run(){
     }
 }
 // call getCSV when the page loads
-document.addEventListener('DOMContentLoaded', run());
-//document.addEventListener('DOMContentLoaded', getTerritoryNames());
+document.addEventListener('DOMContentLoaded', run);
+//document.getElementById("category").addEventListener("change", clearMultiSelect);//document.addEventListener('DOMContentLoaded', getTerritoryNames());
 
 //document.addEventListener('DOMContentLoaded', getCSV());
 

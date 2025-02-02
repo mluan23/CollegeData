@@ -6,3 +6,7 @@
     fill-opacity: 0.7;
 
 }
+
+#multiSelect{
+   display: none;
+}

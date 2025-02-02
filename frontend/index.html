@@ -20,14 +20,27 @@
 <body>
     <div class="container">
         <h1>College Data Display</h1>
-        <button>test</button>
+        <form id="boundsForm">
+            <label>Displaying </label>
+            <input type="number" id="lBound" name="lBound" min="1" max="1800" required>
+            <label> - </label>
+            <input type="number" id="uBound" name="uBound" min="1" max="1800" required>
+        </form>
         <label for="category">Choose a category to display:</label>
-            <select name="category" id="category" onchange="getDisplayCategory()">
-                <option value="Median">Median Earnings</option>
-                <option value="Graduation">Graduation Rate</option>
-                <option value="Employed">Employed Two Years After Graduation</option>
-                <option value="Acceptance">Acceptance Rate</option>
-            </select>
+        <select name="category" id="category" onchange="getDisplayCategory()">
+            <option value="Nums">Number of Colleges</option>
+            <option value="Median">Median Earnings</option>
+            <option value="Graduation">Graduation Rate</option>
+            <option value="Employed">Employed Two Years After Graduation</option>
+            <option value="Acceptance">Acceptance Rate</option>
+            <option value="Net">Net Cost</option>
+            <option value="Tuition">Tuition</option>
+            <option value="Pell">Receiving Pell Grant</option>
+            <option value="Athletes">Varsity Athletes</option>
+            <option value="Undergrads">Total Undergraduates</option>
+        </select>
+        <div id="multiContainer">filler text</div>
+            <select id="multiSelect" multiple></select>
         <div id="map" style="height: 500px; width: 100%;"></div>
 
         <table id="csvTable">
