@@ -2,6 +2,9 @@ var states = []
 var map
 var stateLayers = []
 var allMajors = []
+var data
+var geoJSONMappings
+var numCollegesByState
 
 
 const abbreviationToState = new Map([
@@ -63,6 +66,13 @@ const abbreviationToState = new Map([
     ["VI", "United States Virgin Islands"]
 ]);
 
+function makeEmptyMapping(map){
+    for(const[abr, state] of abbreviationToState){
+        map.set(state,0)
+    }
+    return map
+}
+
 //var states = ['alabama','alaska','arizona','arkansas','california','colorado','connecticut','delaware','florida','georgia','hawaii','idaho','illinois','indiana','iowa','kansas','kentucky','louisiana','maine','maryland','massachusetts','michigan','minnesota','mississippi','missouri','montana','nebraska','nevada','new hampshire','new jersey','new mexico','new york','north carolina','north dakota','ohio','oklahoma','oregon','pennsylvania','rhode island','south carolina','south dakota','tennessee','texas','utah','vermont','virginia','washington','west virginia','wisconsin','wyoming']
 // retrieves the CSV data, and parses it
 async function getCSVData(){
@@ -71,7 +81,7 @@ async function getCSVData(){
         if (!response.ok) {
             throw new Error('Network response was not ok');
         }
-        var data = await response.text(); // entire CSV as a single string
+        data = await response.text(); // entire CSV as a single string
         //console.log('Got CSV')
        // displayData(data);
     } catch (error) {
@@ -98,47 +108,52 @@ async function getCSVData(){
 
 function getDisplayCategory(){
     clearMultiSelect()
+    var mapping = makeEmptyMapping(new Map())
+    var lBound = document.getElementById('lBound').value
+    var uBound = document.getElementById('uBound').value
+
     var category = document.getElementById('category')
     switch (category.value){
         case "Nums":
-            getNumCollegesPerState
+            mapping = getNumCollegesPerState(mapping, data, lBound, uBound)
+            break
         case "Median":
-            getEarnings
+            mapping = getEarnings(mapping, data, lBound, uBound)
             break
         case "Graduation":
-            getPercentages
+            mapping = getPercentages(mapping, data, lBound, uBound, 'graduation rate', numCollegesByState)
             break
         case "Employed":
-            getPercentages
+            mapping = getPercentages(mapping, data, lBound, uBound, 'employed 2 years post graduation', numCollegesByState)
             break
         case "Acceptance":
-            getPercentages
+            mapping = getPercentages(mapping, data, lBound, uBound, 'acceptance rate', numCollegesByState)
             break
         case "Pell":
-            getPercentages
+            mapping = getPercentages(mapping, data, lBound, uBound, 'pell-grant recipients', numCollegesByState)
             break
         case "Athletes":
-            getPercentages
+            mapping = getPercentages(mapping, data, lBound, uBound, 'varsity athletes', numCollegesByState)
             break
         case "Net":
-            getNetCost
+            mapping = getNetCost(mapping, data, lBound, uBound)
             var options = ["<30k", "30-48k", "49-75k", "76-110k", "110k+"]
             addOptions(options)
             break
             // then we will add the option
         case "Tuition":
-            getTuitions
+            mapping = getTuitions
             var options = ["In-State", "Out-of-State"]
             addOptions(options)
             break
         case "Undergrads":
-            getTotalUnderGrads
+            mapping = getTotalUnderGrads
             var options = ["Full-Time", "Part-Time"]
             addOptions(options)
             break
-
-        
     }
+    removeStateLayers()
+    colorMap(geoJSONMappings, mapping)
 
     console.log(category.value)
 }
@@ -436,7 +451,7 @@ function getColorByPercentages(count){
 // }
 
 // count num colleges from lower to upper bound
-function getNumCollegesPerState(numCollegesByState, data, lBound, uBound, geoJSONMappings){
+function getNumCollegesPerState(numCollegesByState, data, lBound, uBound){
     //lBound -= 1 // just so we can index by 1
     data.forEach((row, index) => {
         if(index >= lBound && index <= uBound){
@@ -589,6 +604,10 @@ function getPercentages(percentages, data, lBound, uBound, colName, numCollegesB
             //console.log(percent)
             var s = row['location']
             var state = getStateFromLocation(s)
+            if(state == undefined){
+                console.log(s)
+                return
+            }
             percentages.set(state, percentages.get(state) + percent)
         }
     })
@@ -625,45 +644,23 @@ function getAverage(stateData, numCollegesByState){
 
 async function run(){
     await getTerritoryNames()
-    var geoJSONMappings = new Map()
-    var numCollegesByState = new Map()
-    var earningsByState = new Map()
-    var percentagesByGrad = new Map()
-    var percentagesByAccept = new Map()
-    var percentagesByEmployed = new Map()
-    var percentPell = new Map()
-    var percentAthletes = new Map()
+    geoJSONMappings = new Map()
     var promises = []
     //const states = ['alabama','alaska','arizona','arkansas','california','colorado','connecticut','delaware','florida','georgia','hawaii','idaho','illinois','indiana','iowa','kansas','kentucky','louisiana','maine','maryland','massachusetts','michigan','minnesota','mississippi','missouri','montana','nebraska','nevada','new hampshire','new jersey','new mexico','new york','north carolina','north dakota','ohio','oklahoma','oregon','pennsylvania','rhode island','south carolina','south dakota','tennessee','texas','utah','vermont','virginia','washington','west virginia','wisconsin','wyoming']
     try{
-        getCSVData().then(async data => {
+        getCSVData().then(async datas => {
+            data = datas
             map = initMap()
             //getCounts(data, map, 'coordinates')
             states.forEach(state => {
                 const promise = loadStateGeoJSON(state).then(geoJSON => {
                     geoJSONMappings.set(state, geoJSON)
-                    numCollegesByState.set(state,0)
-                    earningsByState.set(state,0)
-                    percentagesByGrad.set(state,0)
-                    percentagesByAccept.set(state,0)
-                    percentagesByEmployed.set(state,0)
-                    percentAthletes.set(state,0)
                 })
                 promises.push(promise)
             })
             await Promise.all(promises)
-
-            // we need to wait for all promises to be resolved before we can attempt to get the stuff
-            // numCollegesByState = countNumCollegesPerState(numCollegesByState, data, 0, 1800, geoJSONMappings)
-            // console.log(numCollegesByState)
-            // var sum = 0
-            // states.forEach(state => {
-            //     //colorTerritory(geoJSONMappings.get(state), numCollegesByState.get(state))
-            //     sum += numCollegesByState.get(state)
-            // })
-            // countNumCollegesPerState(numCollegesByState, data, lBound, uBound, geoJSONMappings)
-            // getEarnings(earningsByState, data, lBound, uBound, numCollegesByState, geoJSONMappings)
-            // getTotalUnderGrads(percentAthletes, data, lBound, uBound, geoJSONMappings)
+            numCollegesByState = getNumCollegesPerState(makeEmptyMapping(new Map()), data, 0, 1800)
+            colorMap(geoJSONMappings, numCollegesByState)
 
         })
     } catch(error){
@@ -672,6 +669,9 @@ async function run(){
 }
 // call getCSV when the page loads
 document.addEventListener('DOMContentLoaded', run);
+document.getElementById("lBound").addEventListener("change", getDisplayCategory)
+document.getElementById("uBound").addEventListener("change", getDisplayCategory)
+
 //document.getElementById("category").addEventListener("change", clearMultiSelect);//document.addEventListener('DOMContentLoaded', getTerritoryNames());
 
 //document.addEventListener('DOMContentLoaded', getCSV());
