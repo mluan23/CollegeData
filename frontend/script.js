@@ -6,7 +6,6 @@ var data
 var geoJSONMappings
 var numCollegesByState
 
-
 const abbreviationToState = new Map([
     ["AL", "Alabama"],
     ["AK", "Alaska"],
@@ -107,12 +106,30 @@ async function getCSVData(){
 }
 
 function getDisplayCategory(){
-    clearMultiSelect()
     var mapping = makeEmptyMapping(new Map())
     var lBound = document.getElementById('lBound').value
     var uBound = document.getElementById('uBound').value
-
     var category = document.getElementById('category')
+
+    var subOptions = {
+        "<$30k": () => getCostByIncome(mapping, "<$30k", data, lBound, uBound),
+        "$30-48k": () => getCostByIncome(mapping, "$30-48k", data, lBound, uBound),
+        "$49-75k": () => getCostByIncome(mapping, "$49-75k", data, lBound, uBound),
+        "$76-110k": () => getCostByIncome(mapping, "$76-110k", data, lBound, uBound),
+        "$110k+": () => getCostByIncome(mapping, "$110k+", data, lBound, uBound),
+        "In-State": () => getTuitions(mapping, data, lBound, uBound, 'in'),
+        "Out-State": () => getTuitions(mapping, data, lBound, uBound, 'out'),
+        "Full-Time": () => getUnderGrads(mapping, data, lBound, uBound, 'full'),
+        "Part-Time": () => getUnderGrads(mapping, data, lBound, uBound, 'part')
+    };
+    var selectedOption = document.getElementById('multiSelect').value;
+    if(subOptions[selectedOption]){
+        mapping = subOptions[selectedOption]()
+        removeStateLayers()
+        colorMap(geoJSONMappings, mapping)
+        return
+    }
+    
     switch (category.value){
         case "Nums":
             mapping = getNumCollegesPerState(mapping, data, lBound, uBound)
@@ -137,37 +154,49 @@ function getDisplayCategory(){
             break
         case "Net":
             mapping = getNetCost(mapping, data, lBound, uBound)
-            var options = ["<30k", "30-48k", "49-75k", "76-110k", "110k+"]
+            //mapping = getAverage(mapping, numCollegesByState)
+            var options = ["<$30k", "$30-48k", "$49-75k", "$76-110k", "$110k+"]
             addOptions(options)
+            //var selectedOption = document.getElementById('multiSelect').value;
+            // if (netOptions[selectedOption]) {
+            //     console.log('ok')
+            //     mapping = netOptions[selectedOption](mapping, data, lBound, uBound, selectedOption);
+            // }
             break
             // then we will add the option
         case "Tuition":
-            mapping = getTuitions
-            var options = ["In-State", "Out-of-State"]
+            mapping = getTuitions(mapping, data, lBound, uBound, 'total')
+            var options = ["In-State", "Out-State"]
             addOptions(options)
             break
         case "Undergrads":
-            mapping = getTotalUnderGrads
+            mapping = getUnderGrads(mapping, data, lBound, uBound, 'total')
             var options = ["Full-Time", "Part-Time"]
             addOptions(options)
             break
     }
     removeStateLayers()
     colorMap(geoJSONMappings, mapping)
-
     console.log(category.value)
 }
 
+
+// // generate the key for color and values
+// function generateKey(){
+
+// }
+
 function addOptions(options){
-    sel = document.getElementById("multiSelect")
-    sel.innerHTML = ''
+    var multiSelect = document.getElementById("multiSelect")
+    multiSelect.innerHTML = ''
+    multiSelect.appendChild(document.createElement("option"))
     options.forEach(option => {
         var o = document.createElement("option")
         o.value = option
         o.textContent = option
-        sel.appendChild(o)
+        multiSelect.appendChild(o)
     })
-    sel.style.display = 'inline'
+    multiSelect.style.display = 'inline'
 }
 
 function clearMultiSelect(){
@@ -250,12 +279,12 @@ function eachFeatureStyle(feature, layer){
 function highlightFeature(e) {
     var layer = e.target;
     layer.setStyle({
-        weight: 1,
-        color: 'red',
+        weight: 2.8,
+        color: 'black',
         dashArray: '',
-        fillOpacity: 0.7
+        fillOpacity: 2
     });
-
+    layer.bringToFront()
     // if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
     //     layer.bringToFront();
     // }
@@ -463,26 +492,33 @@ function getNumCollegesPerState(numCollegesByState, data, lBound, uBound){
     return numCollegesByState
 }
 
-function getTuitions(inState, outState, overall, data, lBound, uBound){
+function getTuitions(mapping, data, lBound, uBound, category){
     data.forEach((row, index) => {
         if(index >= lBound && index <= uBound){
             var instate = parseInt(row['in-state tuition'])
-            var outstate = parseInt(row['out-of-state tuition'])
+            var outstate = parseInt(row['out-state tuition'])
             var s = row['location']
             var state = getStateFromLocation(s)
             if(state == undefined){
                 console.log(s)
                 return
             }
-            inState.set(state, inState.get(state) + instate)
-            outState.set(state, outState.get(state) + outstate)
-            overall.set(state, overall.get(state), instate + outstate)
+            switch(category){
+                case 'in':
+                    mapping.set(state, mapping.get(state) + instate)
+                    break
+                case 'out':
+                    mapping.set(state, mapping.get(state) + outstate)
+                    break
+                default:
+                    mapping.set(state, mapping.get(state) + (instate + outstate)/2)
+            }
         }
     })
     //inState = getAverage(inState, numCollegesByState)
     //outState = getAverage(outState, numCollegesByState)
     //overall = getAverage(overall, numCollegesByState)
-    return [inState, outState, overall]
+    return mapping
 }
 
 function getNetCost(netCosts, data, lBound, uBound){
@@ -517,7 +553,7 @@ function getCostByIncome(costByIncome, colName, data, lBound, uBound){
                 console.log(s)
                 return
             }
-            costByIncome.set(state, netCosts.get(state) + cost)
+            costByIncome.set(state, costByIncome.get(state) + cost)
         }
     })
     //costByIncome = getAverage(costByIncome, numCollegesByState)
@@ -579,7 +615,6 @@ function getNumMajor(majorByState, majorName, data, lBound, uBound){
             majorByState.set(state, majorByState.get(state) + count)
         }
     })
-    //earningsByState = getAverage(earningsByState, numCollegesByState)
     return majorByState
 }
 
@@ -615,7 +650,7 @@ function getPercentages(percentages, data, lBound, uBound, colName, numCollegesB
     return percentages
 }
 
-function getTotalUnderGrads(fullUndergrads, partUndergrads, totalUndergrads, data, lBound, uBound){
+function getUnderGrads(mapping, data, lBound, uBound, category){
     data.forEach((row, index) => {
         if(index >= lBound && index <= uBound){
             var fulltime = parseInt(row['full-time undergraduates'])
@@ -626,12 +661,19 @@ function getTotalUnderGrads(fullUndergrads, partUndergrads, totalUndergrads, dat
                 console.log(s)
                 return
             }
-            totalUndergrads.set(state, totalUndergrads.get(state) + fulltime + partime)
-            fullUndergrads.set(state, fullUndergrads.get(state) + fulltime)
-            partUndergrads.set(state, partUndergrads.get(state) + partime)
+            switch(category){
+                case 'full':
+                    mapping.set(state, mapping.get(state) + fulltime)
+                    break
+                case 'part':
+                    mapping.set(state, mapping.get(state) + partime)
+                    break
+                default:
+                    mapping.set(state, mapping.get(state) + fulltime + partime)
+            }
         }
     })
-    return [totalUndergrads, fullUndergrads, partUndergrads]
+    return mapping
 }
 
 
@@ -671,6 +713,8 @@ async function run(){
 document.addEventListener('DOMContentLoaded', run);
 document.getElementById("lBound").addEventListener("change", getDisplayCategory)
 document.getElementById("uBound").addEventListener("change", getDisplayCategory)
+//document.getElementById("category").addEventListener("change", clearMultiSelect)
+
 
 //document.getElementById("category").addEventListener("change", clearMultiSelect);//document.addEventListener('DOMContentLoaded', getTerritoryNames());
 
