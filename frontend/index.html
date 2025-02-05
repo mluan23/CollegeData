@@ -14,7 +14,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Turf.js/6.5.0/turf.min.js"></script>
     <!--script src="https://unpkg.com/leaflet-pip@latest"></script-->
-
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/simple-statistics@7.0.6/dist/simple-statistics.min.js"></script>
 
 </head>
 <body>
@@ -29,18 +30,19 @@
         <label for="category">Choose a category to display:</label>
         <select name="category" id="category" onchange="getDisplayCategory()">
             <option value="Nums">Number of Colleges</option>
-            <option value="Median">Median Earnings</option>
-            <option value="Graduation">Graduation Rate</option>
-            <option value="Employed">Employed Two Years After Graduation</option>
-            <option value="Acceptance">Acceptance Rate</option>
-            <option value="Net">Net Cost</option>
-            <option value="Tuition">Tuition</option>
-            <option value="Pell">Receiving Pell Grant</option>
-            <option value="Athletes">Varsity Athletes</option>
+            <option value="Median">Median Earnings ($)</option>
+            <option value="Graduation">Graduation Rate (%)</option>
+            <option value="Employed">Employed Two Years After Graduation (%)</option>
+            <option value="Acceptance">Acceptance Rate (%)</option>
+            <option value="Net">Net Cost ($)</option>
+            <option value="Tuition">Tuition ($)</option>
+            <option value="Pell">Receiving Pell Grant (%)</option>
+            <option value="Athletes">Varsity Athletes (%)</option>
             <option value="Undergrads">Number of Undergraduates</option>
         </select>
         <div id="multiContainer">filler text</div>
         <select id="multiSelect" onchange="getDisplayCategory()"></select>
+        <div id="legend"></div>
         <div id="map" style="height: 500px; width: 100%;"></div>
 
         <table id="csvTable">
