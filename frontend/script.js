@@ -4,6 +4,7 @@ var stateLayers = []
 var allMajors = []
 var data
 var geoJSONMappings
+var spatialIndex
 var numCollegesByState
 
 var FIRST = '#006400'
@@ -122,6 +123,8 @@ function getDisplayCategory(){
     var uBound = document.getElementById('uBound').value
     var category = document.getElementById('category')
 
+    var numColleges = makeEmptyMapping(new Map())
+    numColleges = getNumCollegesPerState(numColleges, data, lBound, uBound)
     var subOptions = {
         "<$30k": () => getCostByIncome(mapping, "<$30k", data, lBound, uBound),
         "$30-48k": () => getCostByIncome(mapping, "$30-48k", data, lBound, uBound),
@@ -145,13 +148,14 @@ function getDisplayCategory(){
     
     switch (category.value){
         case "Nums":
-            mapping = getNumCollegesPerState(mapping, data, lBound, uBound)
+            mapping = numColleges
             break
         case "Median":
             mapping = getEarnings(mapping, data, lBound, uBound)
             break
         case "Graduation":
             mapping = getPercentages(mapping, data, lBound, uBound, 'graduation rate', numCollegesByState)
+            console.log(mapping)
             break
         case "Employed":
             mapping = getPercentages(mapping, data, lBound, uBound, 'employed 2 years post graduation', numCollegesByState)
@@ -230,7 +234,7 @@ function initMap(){
         center: [39.8283, -98.5795], // US center
         zoom: 4,
         zoomSnap: 0, // don't snap zoom value
-        maxZoom: 5
+        maxZoom: 7
     })
 
     // hide everything that is not the US
@@ -293,10 +297,10 @@ function eachFeatureStyle(feature, layer){
 function highlightFeature(e) {
     var layer = e.target;
     layer.setStyle({
-        weight: 2.8,
-        color: 'black',
+        weight: 1.5,
+        color: layer.options.fillColor,
         dashArray: '',
-        fillOpacity: 2
+        fillOpacity: 1
     });
     layer.bringToFront()
 }
@@ -331,18 +335,15 @@ function checkPointInState(coords, stateGeoJSON){
     //console.log(stateGeoJSON)
     //console.log(stateGeoJSON.features[0])
     try{
-        stateGeo = turf.polygon(stateGeoJSON.features[0].geometry.coordinates)
+        stateGeo = turf.polygon(stateGeoJSON.geometry.coordinates)
     } catch(error){
         //console.log(error)
-        stateGeo = turf.multiPolygon(stateGeoJSON.features[0].geometry.coordinates)
+        // console.log(stateGeoJSON)
+        // console.log(geoJSONMappings)
+        stateGeo = turf.multiPolygon(stateGeoJSON.geometry.coordinates)
     }
 
-    if(turf.booleanPointInPolygon(point, stateGeo)){
-        //console.log(stateGeoJSON._id)
-        return true
-    }
-   // console.log('non')
-    return false
+    return turf.booleanPointInPolygon(point, stateGeo)
 }
 
 function getStateFromLocation(location){
@@ -350,13 +351,41 @@ function getStateFromLocation(location){
     return abbreviationToState.get(loc[1])
 }
 
-function getStateFromPoint(coord, geoJSONMappings){
+// function getStateFromPoint(coord, geoJSONMappings){
 
 
-    // for each state, in their geoJSON representations
-    for(const [state, geoJSON] of geoJSONMappings.entries()){
-        if(checkPointInState(coord, geoJSON)){
-            return state
+//     // for each state, in their geoJSON representations
+//     for(const [state, geoJSON] of geoJSONMappings.entries()){
+//         if(checkPointInState(coord, geoJSON)){
+//             console.log(geoJSON.hasOwnProperty('bbox'))
+//             return state
+//         }
+//     }
+
+//     // not sure why these two are not being registered, so just hard code
+//     // University of Georgia
+//     if(coord[0] == 25.660879 && coord[1] == 73.7751291)
+//         return 'Georgia'
+//     // Loyola University
+//     if(coord[0] == 41.9987458 && coord[1] == -87.6555909){
+//         return 'Illinois'
+//     }
+//     console.log(coord)
+//     return 'not in a state'
+// }
+
+
+function getStateFromPoint(coord, geoJSONMappings) {
+    // coord[1] is long, coord[0] is lat
+    const results = spatialIndex.search({
+        minX: coord[1],
+        minY: coord[0],
+        maxX: coord[1],
+        maxY: coord[0]
+    });
+    for (const result of results) {
+        if (checkPointInState(coord, result.geoJSON)) {
+            return result.state;
         }
     }
 
@@ -368,9 +397,77 @@ function getStateFromPoint(coord, geoJSONMappings){
     if(coord[0] == 41.9987458 && coord[1] == -87.6555909){
         return 'Illinois'
     }
-    console.log(coord)
-    return 'not in a state'
+
+    console.log("not in state", coord);
+    
+    return 'not in a state';
 }
+
+function createSpatialIndex(geoJSONMappings) {
+    const index = new RBush();
+    // geoJSONMappings.forEach((geoJSON, state) => {
+    for(const [state, geoJSON] of geoJSONMappings.entries()){
+        geoJSON.features.forEach((feature) => {
+            addBoundingBoxToFeature(feature)
+            const [minX, minY, maxX, maxY] = feature.bbox; // Assumes each feature has a bounding box
+            index.insert({
+                minX,
+                minY,
+                maxX,
+                maxY,
+                state,
+                geoJSON: feature
+            });
+        });
+    };
+    spatialIndex = index
+}
+
+function computeBoundingBox(coordinates) {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    console.log('Coordinates:', coordinates);
+
+    coordinates.forEach(polygon => {
+        // Check if polygon[0] is an array of coordinates
+        if (Array.isArray(polygon[0][0])) {
+            // Handle deeper nested structure (e.g., MultiPolygon)
+            polygon.forEach(linearRing => {
+                linearRing.forEach(coord => {
+                   // console.log('Coord:', coord);
+                    if (coord[0] < minX) minX = coord[0];
+                    if (coord[1] < minY) minY = coord[1];
+                    if (coord[0] > maxX) maxX = coord[0];
+                    if (coord[1] > maxY) maxY = coord[1];
+                });
+            });
+        } else {
+            // Handle simpler structure (e.g., Polygon)
+            polygon.forEach(coord => {
+               // console.log('Coord:', coord);
+                if (coord[0] < minX) minX = coord[0];
+                if (coord[1] < minY) minY = coord[1];
+                if (coord[0] > maxX) maxX = coord[0];
+                if (coord[1] > maxY) maxY = coord[1];
+            });
+        }
+    });
+
+    // Check if bounding box has been correctly computed
+    // if (minX === Infinity || minY === Infinity || maxX === -Infinity || maxY === -Infinity) {
+    //     throw new Error('bad coords');
+    // }
+
+    return [minX, minY, maxX, maxY];
+}
+
+
+function addBoundingBoxToFeature(feature) {
+    if (!feature.hasOwnProperty('bbox')) {
+        feature.bbox = computeBoundingBox(feature.geometry.coordinates);
+        //console.log(feature.bbox)
+    }
+}
+
 
 // get the counts for a specific state
 function getCounts(data, colName, state){ 
@@ -456,23 +553,15 @@ function createLegend(mapping){
     var legend = L.control({ position: "topright" })
     legend.onAdd = function() {
         var div = L.DomUtil.create("div", "legend");
-        console.log(bins)
+        //console.log(bins)
         div.innerHTML += "<h4>Legend</h4>";
         div.innerHTML += `<i class="square" style="background: ${colors[4]}"></i><span> ${bins[4]}+</span><br>`;
         div.innerHTML += `<i class="square" style="background: ${colors[3]}"></i><span> ${bins[3]} - ${bins[4]}</span><br>`;
         div.innerHTML += `<i class="square" style="background: ${colors[2]}"></i><span> ${bins[1]} - ${bins[2]}</span><br>`;
         div.innerHTML += `<i class="square" style="background: ${colors[1]}"></i><span> ${bins[0]} - ${bins[1]}</span><br>`;
         div.innerHTML += `<i class="square" style="background: ${colors[0]}"></i><span> <${bins[0]}</span><br>`;
+        div.innerHTML += `<i class="square" style="background: ${UNLISTED}"></i><span> No data provided </span><br>`;
 
-        // for (var i = 0; i < bins.length; i++) {
-
-        //     div.innerHTML += 
-        //     legend.push(
-        //         '<i class="circle" style="background:' + colors[i] + '"></i> ' +
-        //     (bins[i] ? bins[i] : '+'));
-
-        // }
-        // div.innerHTML = labels.join('<br>');
         return div;
     }
     legend.addTo(map)
@@ -487,26 +576,27 @@ function deleteLegend(){
 }
 
 function getColorRanges(mapping) {
-    console.log(ss)
-    var values = Array.from(mapping.values())
-    // console.log(values)
+    //console.log(ss)
+    var values = Array.from(mapping.values()).filter(value => !isNaN(value));
+    console.log(mapping)
+    console.log(values)
     // console.log(mapping)
 
-    console.log(bins)
+    //console.log(bins)
     // uses the jenks natural break algorithm to determine the breaks
     var bins = ss.ckmeans(values, 5);
     // for(var i = 0; i < bins.length; i++){
     //     bins[i] = bins[i][bins[i].length-1]
     // }
-    bins[0] = bins[1][0]-1
-    bins[1] = bins[2][0]-1
-    bins[2] = bins[3][0]-1
-    bins[3] = bins[4][0]-1
-    bins[4] = bins[4][0]
+    bins[0] = (bins[1][0]-1).toFixed(0)
+    bins[1] = (bins[2][0]-1).toFixed(0)
+    bins[2] = (bins[3][0]-1).toFixed(0)
+    bins[3] = (bins[4][0]-1).toFixed(0)
+    bins[4] = (bins[4][0]).toFixed(0)
     // var colorScale = d3.scaleThreshold()
     //         .domain(bins.slice(1)) // Remove the first break, as it is the minimum value
     //         .range(colors);
-    console.log(bins)
+   // console.log(bins)
     return bins
     //         var colorScale = d3.scaleThreshold()
     //             .domain(bins)
@@ -523,6 +613,9 @@ function getColorScale(bins){
 }
 
 function getColor(val, colorScale){
+    if(isNaN(val)){
+        return UNLISTED
+    }
     return colorScale(val)
 }
 
@@ -669,7 +762,7 @@ function getCostByIncome(costByIncome, colName, data, lBound, uBound){
             var state = getStateFromLocation(s)
 
             if(state == undefined){
-                console.log(s)
+               // console.log(s)
                 return
             }
             costByIncome.set(state, costByIncome.get(state) + cost)
@@ -686,7 +779,7 @@ function getAid(aid, data, lBound, uBound){
             var s = row['location']
             var state = getStateFromLocation(s)
             if(state == undefined){
-                console.log(s)
+               // console.log(s)
                 return
             }
 
@@ -704,7 +797,7 @@ function getEarnings(earningsByState, data, lBound, uBound){
             var s = row['location']
             var state = getStateFromLocation(s)
             if(state == undefined){
-                console.log(s)
+                //console.log(s)
                 return
             }
 
@@ -723,7 +816,7 @@ function getNumMajor(majorByState, majorName, data, lBound, uBound){
             var s = row['location']
             var state = getStateFromLocation(s)
             if(state == undefined){
-                console.log(s)
+                //console.log(s)
                 return
             }
             count = majorsMap.get(majorName)
@@ -759,14 +852,19 @@ function getPercentages(percentages, data, lBound, uBound, colName, numCollegesB
             var s = row['location']
             var state = getStateFromLocation(s)
             if(state == undefined){
-                console.log(s)
+                //console.log(s)
                 return
             }
             percentages.set(state, percentages.get(state) + percent)
         }
     })
+    console.log(percentages)
     percentages = getAverage(percentages, numCollegesByState)
     return percentages
+}
+
+function handleNan(){
+
 }
 
 function getUnderGrads(mapping, data, lBound, uBound, category){
@@ -777,7 +875,7 @@ function getUnderGrads(mapping, data, lBound, uBound, category){
             var s = row['location']
             var state = getStateFromLocation(s)
             if(state == undefined){
-                console.log(s)
+               // console.log(s)
                 return
             }
             switch(category){
@@ -797,21 +895,25 @@ function getUnderGrads(mapping, data, lBound, uBound, category){
 
 
 function getAverage(stateData, numCollegesByState){
+    //console.log(stateData)
+   // console.log(numCollegesByState)
     for(const [state, x] of stateData.entries()){
         stateData.set(state, stateData.get(state) / numCollegesByState.get(state))
     }
     return stateData
 }
 
+// something we need to do is reverse the tuition on the legend
+
 async function run(){
     await getTerritoryNames()
     geoJSONMappings = new Map()
     var promises = []
+
     //const states = ['alabama','alaska','arizona','arkansas','california','colorado','connecticut','delaware','florida','georgia','hawaii','idaho','illinois','indiana','iowa','kansas','kentucky','louisiana','maine','maryland','massachusetts','michigan','minnesota','mississippi','missouri','montana','nebraska','nevada','new hampshire','new jersey','new mexico','new york','north carolina','north dakota','ohio','oklahoma','oregon','pennsylvania','rhode island','south carolina','south dakota','tennessee','texas','utah','vermont','virginia','washington','west virginia','wisconsin','wyoming']
     try{
         getCSVData().then(async datas => {
             data = datas
-            map = initMap()
             //getCounts(data, map, 'coordinates')
             states.forEach(state => {
                 const promise = loadStateGeoJSON(state).then(geoJSON => {
@@ -820,9 +922,20 @@ async function run(){
                 promises.push(promise)
             })
             await Promise.all(promises)
+            map = initMap()
+            createSpatialIndex(geoJSONMappings)
             numCollegesByState = getNumCollegesPerState(makeEmptyMapping(new Map()), data, 0, 1800)
+            var sum = 0
+           // console.log(geoJSONMappings)
             colorMap(geoJSONMappings, numCollegesByState, getColorScale(getColorRanges(numCollegesByState)))
             createLegend(numCollegesByState)
+           // console.log(spatialIndex)
+        //    for( const[state, num] of numCollegesByState){
+        //         sum += num
+        //     }
+           // console.log(numCollegesByState)
+            console.log(sum)
+
 
             //console.log(numCollegesByState)
             //generateKey(numCollegesByState)
