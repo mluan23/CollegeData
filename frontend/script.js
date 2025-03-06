@@ -119,12 +119,14 @@ async function getCSVData(){
 
 function getDisplayCategory(){
     var mapping = makeEmptyMapping(new Map())
-    var lBound = document.getElementById('lBound').value
-    var uBound = document.getElementById('uBound').value
+    var lBound = document.getElementById('lBound').value - 1
+    var uBound = document.getElementById('uBound').value - 1
     var category = document.getElementById('category')
-
     var numColleges = makeEmptyMapping(new Map())
+    var time = Date.now()
     numColleges = getNumCollegesPerState(numColleges, data, lBound, uBound)
+    console.log(time - Date.now())
+    numCollegesByState = numColleges
     var subOptions = {
         "<$30k": () => getCostByIncome(mapping, "<$30k", data, lBound, uBound),
         "$30-48k": () => getCostByIncome(mapping, "$30-48k", data, lBound, uBound),
@@ -148,14 +150,14 @@ function getDisplayCategory(){
     
     switch (category.value){
         case "Nums":
-            mapping = numColleges
+            mapping = numCollegesByState
             break
         case "Median":
             mapping = getEarnings(mapping, data, lBound, uBound)
+            mapping = getAverage(mapping, numCollegesByState)
             break
         case "Graduation":
             mapping = getPercentages(mapping, data, lBound, uBound, 'graduation rate', numCollegesByState)
-            console.log(mapping)
             break
         case "Employed":
             mapping = getPercentages(mapping, data, lBound, uBound, 'employed 2 years post graduation', numCollegesByState)
@@ -171,6 +173,7 @@ function getDisplayCategory(){
             break
         case "Net":
             mapping = getNetCost(mapping, data, lBound, uBound)
+            mapping = getAverage(mapping, numCollegesByState)
             //mapping = getAverage(mapping, numCollegesByState)
             var options = ["<$30k", "$30-48k", "$49-75k", "$76-110k", "$110k+"]
             addOptions(options)
@@ -196,7 +199,7 @@ function getDisplayCategory(){
     colorMap(geoJSONMappings, mapping, getColorScale(getColorRanges(mapping)))
     deleteLegend()
     createLegend(mapping)
-    console.log(category.value)
+    //console.log(category.value)
 }
 
 
@@ -224,7 +227,7 @@ async function getTerritoryNames(){
     var response = await fetch('../data/territories_geo_json/State_Names.txt')
     var data = await response.text()
     states = data.split('\r\n')
-    console.log(states)
+    //console.log(states)
     // console.log(statess)
 }
 
@@ -261,7 +264,7 @@ function initMap(){
 
 // Function to load state GeoJSON data
 function loadStateGeoJSON(state) {
-    var file = `../data/territories_geo_json/${state}.geojson`;
+    var file = encodeURI(`../data/territories_geo_json/${state}.geojson`);
     // if(state == 'washington dc'){
     // const file = `https://raw.githubusercontent.com/glynnbird/usstatesgeojson/master/${state}.geojson`;
     // }
@@ -329,17 +332,11 @@ function checkPointInState(coords, stateGeoJSON){
     var x = coords[1]
     var y = coords[0]
     var coord = [x,y]
-    //console.log(coord[0] + ", " + coord[1])
     var point = turf.point(coord)
     var stateGeo = 0
-    //console.log(stateGeoJSON)
-    //console.log(stateGeoJSON.features[0])
     try{
         stateGeo = turf.polygon(stateGeoJSON.geometry.coordinates)
     } catch(error){
-        //console.log(error)
-        // console.log(stateGeoJSON)
-        // console.log(geoJSONMappings)
         stateGeo = turf.multiPolygon(stateGeoJSON.geometry.coordinates)
     }
 
@@ -409,7 +406,7 @@ function createSpatialIndex(geoJSONMappings) {
     for(const [state, geoJSON] of geoJSONMappings.entries()){
         geoJSON.features.forEach((feature) => {
             addBoundingBoxToFeature(feature)
-            const [minX, minY, maxX, maxY] = feature.bbox; // Assumes each feature has a bounding box
+            const [minX, minY, maxX, maxY] = feature.bbox; // need to add bounding box if feature doesn't have it
             index.insert({
                 minX,
                 minY,
@@ -425,7 +422,7 @@ function createSpatialIndex(geoJSONMappings) {
 
 function computeBoundingBox(coordinates) {
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    console.log('Coordinates:', coordinates);
+    //console.log('Coordinates:', coordinates);
 
     coordinates.forEach(polygon => {
         // Check if polygon[0] is an array of coordinates
@@ -451,12 +448,6 @@ function computeBoundingBox(coordinates) {
             });
         }
     });
-
-    // Check if bounding box has been correctly computed
-    // if (minX === Infinity || minY === Infinity || maxX === -Infinity || maxY === -Infinity) {
-    //     throw new Error('bad coords');
-    // }
-
     return [minX, minY, maxX, maxY];
 }
 
@@ -524,29 +515,11 @@ function colorTerritory(stateGeoJSON, count, colorScale){
 
 // so we need to figure out the color scale we using
 function colorMap(geoJSONMappings, mapping, colorScale){
-    console.log(mapping)
+   // console.log(mapping)
     for(const [state, stateGeoJSON] of geoJSONMappings.entries()){
         colorTerritory(stateGeoJSON, mapping.get(state), colorScale)
     }
 }
-
-// function getColor(scale, val){
-//     return val > scale[4] ? '#006400':
-//            val > scale[3] ? '#bef16e':
-//            val > scale[2] ? 'yellow':
-//            val > scale[1] ? 'orange':
-//            val > scale[0] ? 'red':
-//            'black'; // unlisted
-// }
-
-// function generateScale(mapping){
-//     var minValue = Math.min(...Object.values(mapping));
-//     var maxValue = Math.max(...Object.values(mapping));
-
-//     var scale = [minValue, (maxValue * 0.25), (maxValue * 0.5), (maxValue * 0.75), maxValue];
-//     return scale
-// }
-
 
 function createLegend(mapping){
     var bins = getColorRanges(mapping)
@@ -555,6 +528,7 @@ function createLegend(mapping){
         var div = L.DomUtil.create("div", "legend");
         //console.log(bins)
         div.innerHTML += "<h4>Legend</h4>";
+        
         div.innerHTML += `<i class="square" style="background: ${colors[4]}"></i><span> ${bins[4]}+</span><br>`;
         div.innerHTML += `<i class="square" style="background: ${colors[3]}"></i><span> ${bins[3]} - ${bins[4]}</span><br>`;
         div.innerHTML += `<i class="square" style="background: ${colors[2]}"></i><span> ${bins[1]} - ${bins[2]}</span><br>`;
@@ -577,32 +551,23 @@ function deleteLegend(){
 
 function getColorRanges(mapping) {
     //console.log(ss)
-    var values = Array.from(mapping.values()).filter(value => !isNaN(value));
-    console.log(mapping)
-    console.log(values)
+    var values = Array.from(mapping.values()).filter(value => !isNaN(value)).filter(value => value > 0);
+    //console.log(mapping)
+    //console.log(values)
     // console.log(mapping)
 
     //console.log(bins)
     // uses the jenks natural break algorithm to determine the breaks
-    var bins = ss.ckmeans(values, 5);
-    // for(var i = 0; i < bins.length; i++){
-    //     bins[i] = bins[i][bins[i].length-1]
-    // }
-    bins[0] = (bins[1][0]-1).toFixed(0)
-    bins[1] = (bins[2][0]-1).toFixed(0)
-    bins[2] = (bins[3][0]-1).toFixed(0)
-    bins[3] = (bins[4][0]-1).toFixed(0)
-    bins[4] = (bins[4][0]).toFixed(0)
-    // var colorScale = d3.scaleThreshold()
-    //         .domain(bins.slice(1)) // Remove the first break, as it is the minimum value
-    //         .range(colors);
-   // console.log(bins)
+    var bins = ss.ckmeans(values, Math.min(values.length, 5));
+    for(var i = 0; i < bins.length; i++){
+        if(i == bins.length - 1){
+            bins[i] = bins[i][0].toFixed(0)
+        }
+        else{
+            bins[i] = (bins[i+1][0]-1).toFixed(0)
+        }
+    }
     return bins
-    //         var colorScale = d3.scaleThreshold()
-    //             .domain(bins)
-    //             .range(colors);
-    // console.log("created key")
-
 }
 
 function getColorScale(bins){
@@ -613,7 +578,7 @@ function getColorScale(bins){
 }
 
 function getColor(val, colorScale){
-    if(isNaN(val)){
+    if(isNaN(val) || val <= 0){
         return UNLISTED
     }
     return colorScale(val)
@@ -925,21 +890,8 @@ async function run(){
             map = initMap()
             createSpatialIndex(geoJSONMappings)
             numCollegesByState = getNumCollegesPerState(makeEmptyMapping(new Map()), data, 0, 1800)
-            var sum = 0
-           // console.log(geoJSONMappings)
             colorMap(geoJSONMappings, numCollegesByState, getColorScale(getColorRanges(numCollegesByState)))
             createLegend(numCollegesByState)
-           // console.log(spatialIndex)
-        //    for( const[state, num] of numCollegesByState){
-        //         sum += num
-        //     }
-           // console.log(numCollegesByState)
-            console.log(sum)
-
-
-            //console.log(numCollegesByState)
-            //generateKey(numCollegesByState)
-            //drawMap(numCollegesByState)
 
         })
     } catch(error){
