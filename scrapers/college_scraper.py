@@ -7,14 +7,7 @@ from bs4 import BeautifulSoup
 import requests
 import requests_cache
 from fake_useragent import UserAgent
-from urllib.request import Request, urlopen
-from IPython.display import clear_output
-import threading
 import re
-#from selenium import webdriver
-#from selenium.webdriver.chrome.service import Service
-#from selenium.webdriver.common.by import By
-#from selenium.webdriver.chrome.options import Options
 encoding = 'utf-8'
 l_bound = 10
 u_bound = 12

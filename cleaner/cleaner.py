@@ -2,8 +2,6 @@ import pandas as pd
 
 filename = '../data/college.csv'
 
-import pandas as pd
-
 def replace_incorrect_characters(text):
     # Load your CSV file without specifying encoding
     df = pd.read_csv(filename, encoding='Latin1')
@@ -29,9 +27,9 @@ def separate_income_prices(row):
     return row
 
 def main():
-    df = pd.read_csv(filename, encoding='Latin1')
-    df = df.apply(separate_income_prices, axis=1)
-    df = df.drop(columns=['prices-by-income'])
+    df = pd.read_csv(filename, encoding='utf-8')
+    #df = df.apply(separate_income_prices, axis=1)
+    df = df.drop(columns=['majors'])
     df.to_csv(filename, index=False)
   #  remove_em_dash('name')
 

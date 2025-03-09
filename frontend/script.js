@@ -889,7 +889,9 @@ async function run(){
             await Promise.all(promises)
             map = initMap()
             createSpatialIndex(geoJSONMappings)
+            var t = Date.now()
             numCollegesByState = getNumCollegesPerState(makeEmptyMapping(new Map()), data, 0, 1800)
+            console.log(t - Date.now())
             colorMap(geoJSONMappings, numCollegesByState, getColorScale(getColorRanges(numCollegesByState)))
             createLegend(numCollegesByState)
 
