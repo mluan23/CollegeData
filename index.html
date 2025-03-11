@@ -22,10 +22,7 @@
 
 </head>
 <body>
-    <div>
-        <button id="view-map" onclick="showMap()">Map View</button>
-        <button id="view-chart" onclick="showChart()">Chart View</button>
-    </div>
+    
     <div class="container">
         <h1>College Data Display</h1>
         <form id="boundsForm">
@@ -48,15 +45,13 @@
             <option value="undergrads">Number of Undergraduates</option>
         </select>
         <select id="multiSelect" onchange="getDisplayCategory()"></select>
+        <div>
+            <button id="view-map" onclick="showMap()">Map View</button>
+            <button id="view-chart" onclick="showChart()">Chart View</button>
+        </div>
         <div id="legend"></div>
         <div id="map" style="height: 500px; width: 100%;"></div>
-        <div id="chart"></div>
-        <table id="csvTable">
-            <thead>
-                <tr id="tableHeader"></tr>
-            </thead>
-            <tbody id="tableBody"></tbody>
-        </table>
+        <div id="chart" style="display: none;"></div>
     </div>
     <script src="script.js"></script>
 </body>
