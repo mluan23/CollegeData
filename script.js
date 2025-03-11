@@ -334,7 +334,6 @@ function addMarkersToState(state){
     data.forEach(row => {
         var s = getStateFromLocation(row['location'])
         var coord = JSON.parse(row['coordinates'])
-        //var count = parseInt(row[])
         var category = document.getElementById('category').value
         var count = parseInt(row[category])
         var name = row["name"]
@@ -351,9 +350,6 @@ function addMarkersToState(state){
 }
 
 function geoLineStyle(feature){
-    //console.log("hello")
-    //console.log(feature)
-    //console.log(feature.features[0].name)
     return {
         fillColor: getColor(feature.features[0].count),
         weight: 1,
@@ -846,7 +842,7 @@ async function run(){
                 })
                 promises.push(promise)
             })
-            
+
             await Promise.all(promises)
             map = initMap()
             createSpatialIndex(geoJSONMappings)
