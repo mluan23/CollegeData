@@ -6,6 +6,8 @@ var data
 var geoJSONMappings
 var spatialIndex
 var numCollegesByState
+var majorData
+var currentMarkers = []
 
 var FIRST = '#006400'
 var SECOND = '#bef16e'
@@ -84,17 +86,31 @@ function makeEmptyMapping(map){
     return map
 }
 
-//var states = ['alabama','alaska','arizona','arkansas','california','colorado','connecticut','delaware','florida','georgia','hawaii','idaho','illinois','indiana','iowa','kansas','kentucky','louisiana','maine','maryland','massachusetts','michigan','minnesota','mississippi','missouri','montana','nebraska','nevada','new hampshire','new jersey','new mexico','new york','north carolina','north dakota','ohio','oklahoma','oregon','pennsylvania','rhode island','south carolina','south dakota','tennessee','texas','utah','vermont','virginia','washington','west virginia','wisconsin','wyoming']
+function showMap() {
+    document.getElementById('map').style.display = 'block';
+    document.getElementById('chart').style.display = 'none';
+
+    document.getElementById('view-map').disabled = true;
+    document.getElementById('view-chart').disabled = false;
+}
+
+function showChart() {
+    document.getElementById('map').style.display = 'none';
+    document.getElementById('chart').style.display = 'block';
+
+    document.getElementById('view-map').disabled = false;
+    document.getElementById('view-chart').disabled = true;
+}
+
+
 // retrieves the CSV data, and parses it
-async function getCSVData(){
+async function getCSVData(filename){
     try {
-        var response = await fetch('../data/college.csv');
+        var response = await fetch(filename);
         if (!response.ok) {
             throw new Error('Network response was not ok');
         }
         data = await response.text(); // entire CSV as a single string
-        //console.log('Got CSV')
-       // displayData(data);
     } catch (error) {
         console.error('Failed to fetch CSV file:', error);
     }
@@ -106,8 +122,6 @@ async function getCSVData(){
                 console.log(results.meta.fields)
                 // for some reason, the last data entry is just an empty name
                 var r = results.data.slice(0,results.data.length-1)
-                //console.log("Parsed Data:", r);
-                //console.log(r)
                 resolve(r)
             },
             error: function(error){
@@ -118,78 +132,56 @@ async function getCSVData(){
 }
 
 function getDisplayCategory(){
+    map.setZoom(3)
+    currentMarkers.forEach(marker => map.removeLayer(marker));
+    currentMarkers = []
     var mapping = makeEmptyMapping(new Map())
     var lBound = document.getElementById('lBound').value - 1
+    if(lBound < 1){
+        document.getElementById('lBound').value = 1
+    }
     var uBound = document.getElementById('uBound').value - 1
+    if(uBound > 1800){
+        document.getElementById('uBound').value = 1800
+    }
     var category = document.getElementById('category')
     var numColleges = makeEmptyMapping(new Map())
     var time = Date.now()
     numColleges = getNumCollegesPerState(numColleges, data, lBound, uBound)
     console.log(time - Date.now())
     numCollegesByState = numColleges
-    var subOptions = {
-        "<$30k": () => getCostByIncome(mapping, "<$30k", data, lBound, uBound),
-        "$30-48k": () => getCostByIncome(mapping, "$30-48k", data, lBound, uBound),
-        "$49-75k": () => getCostByIncome(mapping, "$49-75k", data, lBound, uBound),
-        "$76-110k": () => getCostByIncome(mapping, "$76-110k", data, lBound, uBound),
-        "$110k+": () => getCostByIncome(mapping, "$110k+", data, lBound, uBound),
-        "In-State": () => getTuitions(mapping, data, lBound, uBound, 'in'),
-        "Out-State": () => getTuitions(mapping, data, lBound, uBound, 'out'),
-        "Full-Time": () => getUnderGrads(mapping, data, lBound, uBound, 'full'),
-        "Part-Time": () => getUnderGrads(mapping, data, lBound, uBound, 'part')
-    };
-    var selectedOption = document.getElementById('multiSelect').value;
-    if(subOptions[selectedOption]){
-        mapping = subOptions[selectedOption]()
-        removeStateLayers()
-        colorMap(geoJSONMappings, mapping, getColorScale(getColorRanges(mapping)))
-        deleteLegend()
-        createLegend(mapping)
-        return
-    }
-    
     switch (category.value){
-        case "Nums":
+        case "rank":
             mapping = numCollegesByState
             break
-        case "Median":
+        case "median earnings":
             mapping = getEarnings(mapping, data, lBound, uBound)
             mapping = getAverage(mapping, numCollegesByState)
             break
-        case "Graduation":
+        case "graduation rate":
             mapping = getPercentages(mapping, data, lBound, uBound, 'graduation rate', numCollegesByState)
             break
-        case "Employed":
+        case "employed 2 years post graduation":
             mapping = getPercentages(mapping, data, lBound, uBound, 'employed 2 years post graduation', numCollegesByState)
             break
-        case "Acceptance":
+        case "acceptance rate":
             mapping = getPercentages(mapping, data, lBound, uBound, 'acceptance rate', numCollegesByState)
             break
-        case "Pell":
+        case "pell-grant recipients":
             mapping = getPercentages(mapping, data, lBound, uBound, 'pell-grant recipients', numCollegesByState)
             break
-        case "Athletes":
+        case "varsity atheletes":
             mapping = getPercentages(mapping, data, lBound, uBound, 'varsity athletes', numCollegesByState)
             break
-        case "Net":
+        case "net cost":
             mapping = getNetCost(mapping, data, lBound, uBound)
             mapping = getAverage(mapping, numCollegesByState)
-            //mapping = getAverage(mapping, numCollegesByState)
-            var options = ["<$30k", "$30-48k", "$49-75k", "$76-110k", "$110k+"]
-            addOptions(options)
-            //var selectedOption = document.getElementById('multiSelect').value;
-            // if (netOptions[selectedOption]) {
-            //     console.log('ok')
-            //     mapping = netOptions[selectedOption](mapping, data, lBound, uBound, selectedOption);
-            // }
             break
-            // then we will add the option
-        case "Tuition":
+        case "tuition":
             mapping = getTuitions(mapping, data, lBound, uBound, 'total')
-            var options = ["In-State", "Out-State"]
-            addOptions(options)
+            mapping = getAverage(mapping, numCollegesByState)
             break
-        case "Undergrads":
+        case "undergrads":
             mapping = getUnderGrads(mapping, data, lBound, uBound, 'total')
             var options = ["Full-Time", "Part-Time"]
             addOptions(options)
@@ -199,10 +191,30 @@ function getDisplayCategory(){
     colorMap(geoJSONMappings, mapping, getColorScale(getColorRanges(mapping)))
     deleteLegend()
     createLegend(mapping)
+    var states = Array.from(mapping.keys());
+    var values = Array.from(mapping.values());
+    createBarChart(states, values);
     //console.log(category.value)
 }
 
+function createBarChart(states, values) {
+    colors = 
+    console.log(values)
+    var data = [{
+        x: states, // States on X-axis
+        y: values, // Data on Y-axis
+        type: 'bar',
+        marker: { color: 'blue' }
+    }];
 
+    var layout = {
+        title: 'Category Data by State',
+        xaxis: { title: 'States', tickangle: -45 },
+        yaxis: { title: 'Value' }
+    };
+
+    Plotly.newPlot('chart', data, layout);
+}
 
 
 function addOptions(options){
@@ -224,47 +236,36 @@ function clearMultiSelect(){
 }
 
 async function getTerritoryNames(){
-    var response = await fetch('../data/territories_geo_json/State_Names.txt')
+    var response = await fetch('/data/State_Names.txt')
     var data = await response.text()
     states = data.split('\r\n')
-    //console.log(states)
-    // console.log(statess)
 }
 
 function initMap(){
-// Initialize the map centered on a specific location
     map = L.map('map', {
-        center: [39.8283, -98.5795], // US center
-        zoom: 4,
+        center: [39.8283, 98.5795], // approx US center
+        zoom: 3,
         zoomSnap: 0, // don't snap zoom value
-        maxZoom: 7
+        minZoom: 3
     })
-
+    //https://cdn.rawgit.com/johan/world.geo.json/34c96bba/countries/USA.geo.json
+    //https://cdn.rawgit.com/mluan23/US-GeoJSON/main/US.geojson
     // hide everything that is not the US
     $.getJSON('https://cdn.rawgit.com/johan/world.geo.json/34c96bba/countries/USA.geo.json').then(function(geoJSON) {
-    var osm = new L.TileLayer.BoundaryCanvas("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        boundary: geoJSON,
-        attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors, US shape <a href="https://github.com/johan/world.geo.json">johan/world.geo.json</a>'
-    });
-    map.addLayer(osm);
-    var usLayer = L.geoJSON(geoJSON);
-    map.fitBounds(usLayer.getBounds());
-    });
+        var osm = new L.TileLayer.BoundaryCanvas("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            boundary: geoJSON,
+            attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors, US shape <a href="https://github.com/johan/world.geo.json">johan/world.geo.json</a>'
+        });
+        map.addLayer(osm);
+        var usLayer = L.geoJSON(geoJSON);
+        map.fitBounds(usLayer.getBounds());
+        });
     return map
-// Add a marker at the location
-// const marker = L.marker([40.7128, -74.0060]).addTo(map)
-//     .bindPopup('<a href="https://www.openstreetmap.org/search?query=40.7128,-74.0060" target="_blank">View Address</a>')
-//     .openPopup();
 }
-
-// function loadState(state){
-//     const url = `https://raw.githubusercontent.com/glynnbird/usstatesgeojson/master/${state}.geojson`;
-//     $.getJSON(url, function(data))
-// }
 
 // Function to load state GeoJSON data
 function loadStateGeoJSON(state) {
-    var file = encodeURI(`../data/territories_geo_json/${state}.geojson`);
+    var file = encodeURI(`/data/territories_geo_json/${state}.geojson`);
     // if(state == 'washington dc'){
     // const file = `https://raw.githubusercontent.com/glynnbird/usstatesgeojson/master/${state}.geojson`;
     // }
@@ -278,9 +279,83 @@ function loadStateGeoJSON(state) {
     })
 }
 
-function geoLineStyle(feature, color, colorScale){
+
+// color territory based on the geoJSON data
+function colorTerritory(stateGeoJSON, colorScale){
+    stateLayers.push(L.geoJSON(stateGeoJSON, {
+        style: geoLineStyle(stateGeoJSON, colorScale),
+        onEachFeature: eachFeatureStyle
+    }).addTo(map))
+}
+
+// so we need to figure out the color scale we using
+function colorMap(geoJSONMappings, mapping){
+    for(const [state, stateGeoJSON] of geoJSONMappings.entries()){
+        stateGeoJSON.features[0].count = mapping.get(state)
+        stateGeoJSON.features[0].name = state
+        colorTerritory(stateGeoJSON, colorScale)
+    }
+}
+
+function getColorRanges(mapping) {
+    //console.log(ss)
+    var values = Array.from(mapping.values()).filter(value => !isNaN(value)).filter(value => value > 0);
+ 
+    // uses the jenks natural break algorithm to determine the breaks
+    var bins = ss.ckmeans(values, Math.min(values.length, 5));
+    for(var i = 0; i < bins.length; i++){
+        if(i == bins.length - 1){
+            bins[i] = bins[i][0].toFixed(0)
+        }
+        else{
+            bins[i] = (bins[i+1][0]-1).toFixed(0)
+        }
+    }
+    return bins
+}
+
+function getColorScale(bins){
+    colorScale = d3.scaleThreshold()
+        .domain(bins)
+        .range(colors)
+    return colorScale
+}
+
+function getColor(val){
+    if(isNaN(val) || val <= 0){
+        return UNLISTED
+    }
+    return colorScale(val)
+}
+
+function addMarkersToState(state){
+    currentMarkers.forEach(marker => map.removeLayer(marker));
+    currentMarkers = []
+    data.forEach(row => {
+        var s = getStateFromLocation(row['location'])
+        var coord = JSON.parse(row['coordinates'])
+        //var count = parseInt(row[])
+        var category = document.getElementById('category').value
+        var count = parseInt(row[category])
+        var name = row["name"]
+        if(s == state){
+            marker = L.marker(coord).addTo(map)
+            marker.bindTooltip(name + "<br>" + count)
+            marker.bindPopup(name + "<br>" + count).openPopup()
+
+            currentMarkers.push(marker)
+        }
+    })
+
+
+}
+
+function geoLineStyle(feature){
+    //console.log("hello")
+    //console.log(feature)
+    //console.log(feature.features[0].name)
     return {
-        fillColor: getColor(color, colorScale),
+        fillColor: getColor(feature.features[0].count),
         weight: 1,
         opacity: 1,
         color: 'blue',
@@ -289,15 +364,18 @@ function geoLineStyle(feature, color, colorScale){
 }
 
 function eachFeatureStyle(feature, layer){
+    //console.log(feature)
     layer.on({
-        mouseover: highlightFeature,
+        mouseover: function(event){
+            highlightFeature(event, feature.name, feature.count)
+        },
         mouseout: resetHighlight,
-        click: zoomAndDisplay
+        click: onClick,
     });
 }
 
 // Function to highlight feature on mouseover
-function highlightFeature(e) {
+function highlightFeature(e, name, count) {
     var layer = e.target;
     layer.setStyle({
         weight: 1.5,
@@ -305,6 +383,7 @@ function highlightFeature(e) {
         dashArray: '',
         fillOpacity: 1
     });
+    layer.bindTooltip(name + ": " + count.toFixed(0)).openTooltip()
     layer.bringToFront()
 }
 
@@ -322,7 +401,10 @@ function resetHighlight(e) {
 }
 
 // Function to zoom to feature on click
-function zoomAndDisplay(e) {
+function onClick(e) {
+    var layer = e.target
+    console.log(layer)
+    addMarkersToState(layer.feature.name)
     map.fitBounds(e.target.getBounds());
 }
 
@@ -347,30 +429,6 @@ function getStateFromLocation(location){
     const loc = location.split(', ')
     return abbreviationToState.get(loc[1])
 }
-
-// function getStateFromPoint(coord, geoJSONMappings){
-
-
-//     // for each state, in their geoJSON representations
-//     for(const [state, geoJSON] of geoJSONMappings.entries()){
-//         if(checkPointInState(coord, geoJSON)){
-//             console.log(geoJSON.hasOwnProperty('bbox'))
-//             return state
-//         }
-//     }
-
-//     // not sure why these two are not being registered, so just hard code
-//     // University of Georgia
-//     if(coord[0] == 25.660879 && coord[1] == 73.7751291)
-//         return 'Georgia'
-//     // Loyola University
-//     if(coord[0] == 41.9987458 && coord[1] == -87.6555909){
-//         return 'Illinois'
-//     }
-//     console.log(coord)
-//     return 'not in a state'
-// }
-
 
 function getStateFromPoint(coord, geoJSONMappings) {
     // coord[1] is long, coord[0] is lat
@@ -481,44 +539,11 @@ function getCounts(data, colName, state){
 }
 
 
-// function addAddressToMap(data, map){
-//     var lines = data.split('\n')
-//     var headers = lines[0].split(',')
-//     var coordIndex = headers.indexOf('coordinates')
-//     if(coordIndex == -1){
-//         coordIndex = headers.indexOf('coordinates\r')
-//     }
-//     for(var i = 1; i < lines.length; i++){
-//         var l = lines[i].split(',')
-//         var coord = l[coordIndex]
-//         //console.log(headers)
-//         console.log(lines[i])
-//         //location = [l[0], l[1]]
-//         L.marker(location).addTo(map)
-//     }
-// }
-
 function removeStateLayers(){
     stateLayers.forEach(layer => {
         map.removeLayer(layer)  
     })
     stateLayers = []
-}
-
-// color territory based on the geoJSON data
-function colorTerritory(stateGeoJSON, count, colorScale){
-    stateLayers.push(L.geoJSON(stateGeoJSON, {
-        style: geoLineStyle(stateGeoJSON, count, colorScale),
-        onEachFeature: eachFeatureStyle
-    }).addTo(map))
-}
-
-// so we need to figure out the color scale we using
-function colorMap(geoJSONMappings, mapping, colorScale){
-   // console.log(mapping)
-    for(const [state, stateGeoJSON] of geoJSONMappings.entries()){
-        colorTerritory(stateGeoJSON, mapping.get(state), colorScale)
-    }
 }
 
 function createLegend(mapping){
@@ -547,63 +572,6 @@ function deleteLegend(){
     if (legend) {
         legend.parentNode.removeChild(legend);
     }
-}
-
-function getColorRanges(mapping) {
-    //console.log(ss)
-    var values = Array.from(mapping.values()).filter(value => !isNaN(value)).filter(value => value > 0);
-    //console.log(mapping)
-    //console.log(values)
-    // console.log(mapping)
-
-    //console.log(bins)
-    // uses the jenks natural break algorithm to determine the breaks
-    var bins = ss.ckmeans(values, Math.min(values.length, 5));
-    for(var i = 0; i < bins.length; i++){
-        if(i == bins.length - 1){
-            bins[i] = bins[i][0].toFixed(0)
-        }
-        else{
-            bins[i] = (bins[i+1][0]-1).toFixed(0)
-        }
-    }
-    return bins
-}
-
-function getColorScale(bins){
-    colorScale = d3.scaleThreshold()
-        .domain(bins)
-        .range(colors)
-    return colorScale
-}
-
-function getColor(val, colorScale){
-    if(isNaN(val) || val <= 0){
-        return UNLISTED
-    }
-    return colorScale(val)
-}
-
-
-
-function drawMap(data) {
-    var width = 800;
-    var height = 600;
-
-    var svg = d3.select("#map")
-        .append("svg")
-        .attr("width", width)
-        .attr("height", height);
-
-    // Replace this with your own map drawing logic
-    // Example: Draw circles for each state value
-    Object.entries(data).forEach(([state, value]) => {
-        svg.append("circle")
-            .attr("cx", Math.random() * width)
-            .attr("cy", Math.random() * height)
-            .attr("r", value)
-            .attr("fill", d3.interpolateBlues(value / 50));
-    });
 }
 
 // displays CSV data; should we use plotting here?
@@ -640,21 +608,6 @@ function displayData(data){
         tableBody.appendChild(tr)
     })
 }
-
-
-// function getColorByPercentages(count){
-//     return count > 80 ? '#006400':
-//            count > 60 ? '#bef16e':
-//            count > 40 ? 'yellow':
-//            count > 20 ? 'orange':
-//            count >= 0 ? 'red':
-//            'black';
-// }
-// function getDisplayCategory(){
-//     category = document.getElementById('category')
-//     if(category == 'Median')
-
-// }
 
 // count num colleges from lower to upper bound
 function getNumCollegesPerState(numCollegesByState, data, lBound, uBound){
@@ -868,16 +821,23 @@ function getAverage(stateData, numCollegesByState){
     return stateData
 }
 
+
+function transformCoordinates(geometry, scale, translateX, translateY) {
+    return geometry.map(coord => [
+        coord[0] * scale + translateX, // Scale and translate longitude
+        coord[1] * scale + translateY  // Scale and translate latitude
+    ]);
+}
+
 // something we need to do is reverse the tuition on the legend
 
 async function run(){
     await getTerritoryNames()
     geoJSONMappings = new Map()
     var promises = []
-
     //const states = ['alabama','alaska','arizona','arkansas','california','colorado','connecticut','delaware','florida','georgia','hawaii','idaho','illinois','indiana','iowa','kansas','kentucky','louisiana','maine','maryland','massachusetts','michigan','minnesota','mississippi','missouri','montana','nebraska','nevada','new hampshire','new jersey','new mexico','new york','north carolina','north dakota','ohio','oklahoma','oregon','pennsylvania','rhode island','south carolina','south dakota','tennessee','texas','utah','vermont','virginia','washington','west virginia','wisconsin','wyoming']
     try{
-        getCSVData().then(async datas => {
+        getCSVData('/data/college.csv').then(async datas => {
             data = datas
             //getCounts(data, map, 'coordinates')
             states.forEach(state => {
@@ -889,12 +849,7 @@ async function run(){
             await Promise.all(promises)
             map = initMap()
             createSpatialIndex(geoJSONMappings)
-            var t = Date.now()
-            numCollegesByState = getNumCollegesPerState(makeEmptyMapping(new Map()), data, 0, 1800)
-            console.log(t - Date.now())
-            colorMap(geoJSONMappings, numCollegesByState, getColorScale(getColorRanges(numCollegesByState)))
-            createLegend(numCollegesByState)
-
+            getDisplayCategory()            
         })
     } catch(error){
         console.log(error)

@@ -1,0 +1,36 @@
+.state:hover{
+    background-color: 'white';
+    font-weight: 1;
+    opacity: 1;
+    color: 'blue';
+    fill-opacity: 0.7;
+
+}
+
+#multiSelect{
+   display: none;
+}
+
+.square{
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.legend{
+    
+}
+
+#map{
+    background-color: #f0f0f0
+}
+
+body{
+    background-color: #f0f0f0
+}
+
+button:disabled {
+    background-color: green; /* Gray background */
+    color: black;           /* Dimmed text color */
+}
