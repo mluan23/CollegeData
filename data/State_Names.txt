@@ -3,42 +3,42 @@ Tennessee
 Maryland
 Wyoming
 Arkansas
-North Carolina
+NorthCarolina
 Utah
-Commonwealth of the Northern Mariana Islands
+CommonwealthoftheNorthernMarianaIslands
 Illinois
 Iowa
 Oklahoma
 Alabama
-New York
+NewYork
 Vermont
 Delaware
-South Carolina
-North Dakota
-Puerto Rico
-New Mexico
-South Dakota
+SouthCarolina
+NorthDakota
+PuertoRico
+NewMexico
+SouthDakota
 Arizona
 Georgia
 Idaho
 Mississippi
-United States Virgin Islands
-Rhode Island
+UnitedStatesVirginIslands
+RhodeIsland
 Nevada
 Washington
 Indiana
 California
-American Samoa
+AmericanSamoa
 Ohio
-West Virginia
+WestVirginia
 Minnesota
-New Jersey
+NewJersey
 Oregon
 Massachusetts
 Connecticut
 Montana
 Virginia
-New Hampshire
+NewHampshire
 Hawaii
 Michigan
 Florida
@@ -49,7 +49,7 @@ Wisconsin
 Missouri
 Kansas
 Texas
-District of Columbia
+DistrictofColumbia
 Pennsylvania
 Colorado
 Nebraska
