@@ -846,6 +846,7 @@ async function run(){
                 })
                 promises.push(promise)
             })
+            
             await Promise.all(promises)
             map = initMap()
             createSpatialIndex(geoJSONMappings)
