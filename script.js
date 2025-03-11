@@ -265,7 +265,8 @@ function initMap(){
 
 // Function to load state GeoJSON data
 function loadStateGeoJSON(state) {
-    var file = encodeURI(`data/territories_geo_json/${state}.geojson`);
+    //console.log("test")
+    var file = encodeURI(`data/territoriesgeojson/${state}.geojson`);
     // if(state == 'washington dc'){
     // const file = `https://raw.githubusercontent.com/glynnbird/usstatesgeojson/master/${state}.geojson`;
     // }
