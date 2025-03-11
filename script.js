@@ -236,7 +236,7 @@ function clearMultiSelect(){
 }
 
 async function getTerritoryNames(){
-    var response = await fetch('../data/State_Names.txt')
+    var response = await fetch('data/State_Names.txt')
     var data = await response.text()
     states = data.split('\r\n')
 }
@@ -265,7 +265,7 @@ function initMap(){
 
 // Function to load state GeoJSON data
 function loadStateGeoJSON(state) {
-    var file = encodeURI(`../data/territories_geo_json/${state}.geojson`);
+    var file = encodeURI(`data/territories_geo_json/${state}.geojson`);
     // if(state == 'washington dc'){
     // const file = `https://raw.githubusercontent.com/glynnbird/usstatesgeojson/master/${state}.geojson`;
     // }
@@ -837,7 +837,7 @@ async function run(){
     var promises = []
     //const states = ['alabama','alaska','arizona','arkansas','california','colorado','connecticut','delaware','florida','georgia','hawaii','idaho','illinois','indiana','iowa','kansas','kentucky','louisiana','maine','maryland','massachusetts','michigan','minnesota','mississippi','missouri','montana','nebraska','nevada','new hampshire','new jersey','new mexico','new york','north carolina','north dakota','ohio','oklahoma','oregon','pennsylvania','rhode island','south carolina','south dakota','tennessee','texas','utah','vermont','virginia','washington','west virginia','wisconsin','wyoming']
     try{
-        getCSVData('../data/college.csv').then(async datas => {
+        getCSVData('data/college.csv').then(async datas => {
             data = datas
             //getCounts(data, map, 'coordinates')
             states.forEach(state => {
